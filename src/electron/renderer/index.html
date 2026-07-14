@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'" />
+    <title>팰 후원 브리지</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">PAL DONATION BRIDGE</p>
+          <h1>팰 후원 브리지</h1>
+          <p class="subtitle">치지직 후원을 팰월드 이벤트로 연결합니다.</p>
+        </div>
+        <div id="global-status" class="status-pill offline"><span></span>연결 안 됨</div>
+      </header>
+
+      <section class="grid status-grid">
+        <article class="card status-card">
+          <div class="card-heading">
+            <div class="icon chzzk">C</div>
+            <div><p class="label">치지직</p><h2 id="chzzk-status">연결 안 됨</h2></div>
+          </div>
+          <button id="connect-button" class="primary">치지직 연결</button>
+        </article>
+        <article class="card status-card">
+          <div class="card-heading">
+            <div class="icon pal">P</div>
+            <div><p class="label">팰월드 서버</p><h2 id="palworld-status">연결 안 됨</h2></div>
+          </div>
+          <button id="palworld-test-button" class="secondary">연결 확인</button>
+        </article>
+      </section>
+
+      <section class="grid content-grid">
+        <article class="card settings-card">
+          <div class="section-title"><div><p class="label">초기 설정</p><h2>치지직 앱 정보</h2></div><span id="saved-badge" class="badge">미저장</span></div>
+          <form id="config-form">
+            <label>Client ID<input id="client-id" autocomplete="off" required /></label>
+            <label>Client Secret<input id="client-secret" type="password" autocomplete="new-password" placeholder="저장된 경우 비워두세요" /></label>
+            <label>리디렉션 URL<input id="redirect-uri" value="http://localhost:3000/auth/callback" required /></label>
+            <p class="hint">Secret은 Windows 보안 저장소로 암호화되며 화면에 다시 표시되지 않습니다.</p>
+            <button class="secondary save-button" type="submit">설정 저장</button>
+          </form>
+        </article>
+
+        <article class="card activity-card">
+          <div class="section-title"><div><p class="label">실시간</p><h2>활동 기록</h2></div><button id="clear-log" class="text-button">비우기</button></div>
+          <div id="activity-list" class="activity-list">
+            <div class="empty-state">치지직을 연결하면 채팅과 후원 기록이 여기에 표시됩니다.</div>
+          </div>
+        </article>
+      </section>
+
+      <section class="card palworld-settings-card">
+        <div class="section-title"><div><p class="label">서버 설정</p><h2>PalDefender 연결</h2></div><span id="palworld-saved-badge" class="badge">미저장</span></div>
+        <form id="palworld-form" class="palworld-form">
+          <label>API 주소<input id="paldefender-url" value="http://127.0.0.1:17993" required /></label>
+          <label>API 토큰<input id="paldefender-token" type="password" autocomplete="new-password" placeholder="저장된 경우 비워두세요" /></label>
+          <label>스트리머 캐릭터<select id="palworld-player"><option value="">연결 확인 후 선택</option></select></label>
+          <label class="toggle-label"><input id="test-mode" type="checkbox" checked /><span>테스트 모드</span><small>실제 게임은 변경하지 않고 효과만 표시</small></label>
+          <button class="secondary save-button" type="submit">서버 설정 저장</button>
+        </form>
+      </section>
+
+      <section class="card rules-card">
+        <div class="section-title"><div><p class="label">후원 규칙</p><h2>팰월드 이벤트</h2></div><span class="badge waiting">테스트 버튼으로 먼저 확인</span></div>
+        <div class="rules">
+          <button data-test-amount="1000"><strong>1,000원</strong><span>고기 5개</span><em>테스트</em></button>
+          <button data-test-amount="3000"><strong>3,000원</strong><span>일반 아이템 랜덤</span><em>테스트</em></button>
+          <button data-test-amount="5000"><strong>5,000원</strong><span>고급 아이템 랜덤</span><em>테스트</em></button>
+          <button data-test-amount="8000"><strong>8,000원</strong><span>랜덤 방해</span><em>테스트</em></button>
+          <button data-test-amount="10000"><strong>10,000원</strong><span>도움 아이템</span><em>테스트</em></button>
+          <button data-test-amount="50000"><strong>50,000원</strong><span>즉사 이벤트</span><em>테스트</em></button>
+        </div>
+      </section>
+    </main>
+    <script src="./renderer.js"></script>
+  </body>
+</html>
