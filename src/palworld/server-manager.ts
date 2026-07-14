@@ -64,12 +64,12 @@ export class PalworldServerManager {
     }
 
     onProgress('팰월드 전용 서버를 설치하거나 업데이트하는 중입니다. 시간이 걸릴 수 있습니다.');
-    await runProcess(steamcmdExe, [
+    await runSteamCmd(steamcmdExe, [
       '+force_install_dir', serverDir,
       '+login', 'anonymous',
       '+app_update', PALWORLD_APP_ID, 'validate',
       '+quit',
-    ]);
+    ], onProgress);
 
     if (!(await fileExists(serverExe))) {
       throw new Error('팰월드 전용 서버 설치 파일을 찾지 못했습니다.');
@@ -206,14 +206,53 @@ async function assertSha256(filePath: string, expected: string): Promise<void> {
   if (actual !== expected) throw new Error('PalDefender 파일 무결성 검증에 실패했습니다.');
 }
 
-async function runProcess(command: string, args: string[]): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
+async function runSteamCmd(command: string, args: string[], onProgress: ProgressHandler): Promise<void> {
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const exitCode = await runProcess(command, args, [0, 7]);
+    if (exitCode === 0) return;
+
+    onProgress('SteamCMD 자체 업데이트가 완료되어 재시작을 기다리는 중입니다.');
+    await waitForWindowsProcessExit('steamcmd.exe', 30 * 60_000);
+    await delay(2_000);
+    onProgress(`SteamCMD를 다시 실행합니다. (${attempt}/3)`);
+  }
+  throw new Error('SteamCMD 자체 업데이트 후 서버 설치를 다시 시작하지 못했습니다.');
+}
+
+async function runProcess(command: string, args: string[], acceptedExitCodes: number[] = [0]): Promise<number> {
+  return new Promise<number>((resolve, reject) => {
     const child = spawn(command, args, { windowsHide: true, stdio: 'pipe' });
     let tail = '';
     child.stdout.on('data', (chunk: Buffer) => { tail = `${tail}${chunk.toString('utf8')}`.slice(-2_000); });
     child.stderr.on('data', (chunk: Buffer) => { tail = `${tail}${chunk.toString('utf8')}`.slice(-2_000); });
     child.on('error', reject);
-    child.on('exit', (code) => code === 0 ? resolve() : reject(new Error(`설치 프로그램이 종료 코드 ${code}로 실패했습니다. ${tail}`)));
+    child.on('exit', (code) => {
+      const exitCode = code ?? -1;
+      if (acceptedExitCodes.includes(exitCode)) resolve(exitCode);
+      else reject(new Error(`설치 프로그램이 종료 코드 ${exitCode}로 실패했습니다. ${tail}`));
+    });
+  });
+}
+
+async function waitForWindowsProcessExit(imageName: string, timeoutMs: number): Promise<void> {
+  if (process.platform !== 'win32') return;
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const output = await captureProcessOutput('tasklist.exe', ['/FI', `IMAGENAME eq ${imageName}`, '/NH']);
+    if (!output.toLowerCase().includes(imageName.toLowerCase())) return;
+    await delay(2_000);
+  }
+  throw new Error('SteamCMD 재시작 완료 대기 시간이 초과됐습니다.');
+}
+
+async function captureProcessOutput(command: string, args: string[]): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const child = spawn(command, args, { windowsHide: true, stdio: 'pipe' });
+    let output = '';
+    child.stdout.on('data', (chunk: Buffer) => { output += chunk.toString('utf8'); });
+    child.stderr.on('data', (chunk: Buffer) => { output += chunk.toString('utf8'); });
+    child.on('error', reject);
+    child.on('exit', () => resolve(output));
   });
 }
 
