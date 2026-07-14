@@ -10,7 +10,7 @@ jobs:
   build:
     runs-on: windows-latest
     permissions:
-      contents: read
+      contents: write
 
     steps:
       - name: Checkout
@@ -38,3 +38,14 @@ jobs:
             out/make/squirrel.windows/x64/RELEASES
           if-no-files-found: error
 
+      - name: Publish installer release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $installer = Get-ChildItem "out/make/squirrel.windows/x64/*.exe" | Select-Object -First 1
+          if (-not $installer) { throw "Windows installer was not found." }
+          $releaseFile = Join-Path $env:RUNNER_TEMP "PalDonationBridge-Setup.exe"
+          Copy-Item $installer.FullName $releaseFile
+          gh release create $env:GITHUB_REF_NAME $releaseFile --title "팰 후원 브리지 $env:GITHUB_REF_NAME" --notes "Windows 테스트용 설치 파일입니다. PalDonationBridge-Setup.exe 하나만 내려받아 실행하세요." --prerelease
