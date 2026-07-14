@@ -3,6 +3,12 @@ module.exports = {
     asar: true,
     name: 'PalDonationBridge',
     executableName: 'PalDonationBridge',
+    ignore: [
+      /^\/\.env(?:\..*)?$/,
+      /^\/worker(?:\/|$)/,
+      /^\/docs(?:\/|$)/,
+      /^\/\.github(?:\/|$)/,
+    ],
   },
   makers: [
     {

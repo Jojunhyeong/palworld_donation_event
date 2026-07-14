@@ -1,0 +1,17 @@
+name: Remove unsafe prerelease
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Remove v0.2.1-dev release and tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release delete v0.2.1-dev --repo ${{ github.repository }} --cleanup-tag --yes
