@@ -70,6 +70,7 @@ input:focus, select:focus { border-color: #00c967; box-shadow: 0 0 0 3px rgba(0,
 .rules { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
 .rules button { position: relative; min-height: 86px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 5px; padding: 12px; border-radius: 12px; color: inherit; background: #10161e; border: 1px solid #222c38; text-align: left; }
 .rules button:hover { border-color: #445166; background: #151c25; }
+.rules button:disabled:hover { border-color: #222c38; background: #10161e; }
 .rules strong { color: #f5bd55; font-size: 14px; }
 .rules span { color: #9da9b8; font-size: 11px; line-height: 1.4; }
 .rules em { position: absolute; right: 8px; top: 8px; color: #687587; font-size: 9px; font-style: normal; }

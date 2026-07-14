@@ -12,11 +12,14 @@
 - Cloudflare Worker Secret 저장소를 이용한 OAuth 토큰 교환
 - AES-GCM 암호화 및 1회 수령 후 삭제되는 인증 티켓
 - 운영체제 보안 저장소를 이용한 사용자 토큰 암호화
-- PalDefender 연결 확인과 스트리머 캐릭터 선택
-- 금액별 후원 효과 테스트 모드
+- Windows 사용자 폴더에 SteamCMD·팰월드 전용 서버 자동 설치
+- SHA-256 검증 후 PalDefender 자동 설치 및 localhost 전용 REST/RCON 설정
+- 운영체제 보안 저장소를 이용한 PalDefender·RCON 토큰 암호화
+- 접속 중인 스트리머 캐릭터 자동 선택
+- 1천·3천·5천·8천·1만원 후원의 아이템 지급 및 이동 효과 실제 실행
 - GitHub Actions를 이용한 Windows `Setup.exe` 자동 빌드
 
-> 실제 팰월드 아이템 지급·이동·사망 실행기는 개발 중입니다. 현재 후원 효과는 테스트 모드로만 표시됩니다.
+> 5만원 즉사 효과는 PalDefender에 안전한 플레이어 사망 명령이 없어 아직 비활성화되어 있습니다. 자동 설치와 실제 효과는 최종 배포 전에 Windows에서 실전 검증이 필요합니다.
 
 ## 개발 실행
 
@@ -49,3 +52,4 @@ Windows 설치 파일은 GitHub Actions의 `Build Windows installer` 워크플�
 - `.env`는 Git에 포함되지 않습니다.
 - Client Secret, Access Token, Refresh Token, PalDefender Token을 이슈·로그·커밋에 올리지 마세요.
 - PalDefender API는 `127.0.0.1`에서만 접속하도록 설계했습니다.
+- PalDefender 바이너리는 앱에 재배포하지 않고 공식 GitHub 릴리스에서 실행 시 내려받아 게시된 SHA-256으로 검증합니다.

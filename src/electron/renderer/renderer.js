@@ -23,7 +23,13 @@ function setChzzkStatus(status) {
 }
 
 function setPalworldStatus(status) {
-  palworldStatus.textContent = status === 'connected' ? '연결됨' : status === 'error' ? '연결 오류' : '연결 안 됨';
+  const labels = {
+    connected: '연결됨',
+    preparing: '설치·설정 중',
+    ready: '설정 완료',
+    error: '연결 오류',
+  };
+  palworldStatus.textContent = labels[status] ?? '연결 안 됨';
 }
 
 function addActivity(kind, title, message) {
@@ -43,6 +49,7 @@ function addActivity(kind, title, message) {
 
 async function loadConfig() {
   const config = await api.getConfig();
+  if (config.serverInstalled) setPalworldStatus('ready');
 }
 
 connectButton.addEventListener('click', async () => {
@@ -67,8 +74,16 @@ document.querySelector('#palworld-test-button').addEventListener('click', async 
 });
 
 document.querySelector('#palworld-setup-button').addEventListener('click', async () => {
-  const result = await api.preparePalworld();
-  addActivity(result.ok ? 'success' : 'system', '팰월드 서버 준비', result.message);
+  const button = document.querySelector('#palworld-setup-button');
+  button.disabled = true;
+  button.textContent = '설치·설정 중';
+  try {
+    const result = await api.preparePalworld();
+    addActivity(result.ok ? 'success' : 'error', '팰월드 서버 준비', result.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = '서버 자동 설정';
+  }
 });
 
 document.querySelectorAll('[data-test-amount]').forEach((button) => {
@@ -96,7 +111,8 @@ api.onEvent((event) => {
     addActivity('donation', `${event.payload.donatorNickname ?? '익명'} · ${event.payload.payAmount ?? 0}원`, event.payload.donationText ?? '-');
   }
   if (event.type === 'effect') {
-    addActivity('effect', `${Number(event.payload.amount).toLocaleString('ko-KR')}원 · ${event.payload.label}`, `${event.payload.detail} (테스트 모드)`);
+    const mode = event.payload.mode === 'live' ? '실제 실행' : '테스트';
+    addActivity('effect', `${Number(event.payload.amount).toLocaleString('ko-KR')}원 · ${event.payload.label}`, `${event.payload.detail} (${mode})`);
   }
 });
 

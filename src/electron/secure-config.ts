@@ -9,6 +9,9 @@ interface StoredConfig {
   refreshTokenEncrypted?: string;
   palDefenderUrl?: string;
   palDefenderTokenEncrypted?: string;
+  rconPasswordEncrypted?: string;
+  rconPort?: number;
+  palworldServerDir?: string;
   palworldPlayerId?: string;
   testMode?: boolean;
 }
@@ -18,6 +21,7 @@ export interface PublicConfig {
   hasPalDefenderToken: boolean;
   palworldPlayerId: string;
   testMode: boolean;
+  serverInstalled: boolean;
 }
 
 export class SecureConfigStore {
@@ -32,6 +36,7 @@ export class SecureConfigStore {
       hasPalDefenderToken: Boolean(stored.palDefenderTokenEncrypted),
       palworldPlayerId: stored.palworldPlayerId ?? '',
       testMode: stored.testMode ?? true,
+      serverInstalled: Boolean(stored.palworldServerDir),
     };
   }
 
@@ -47,10 +52,14 @@ export class SecureConfigStore {
   async savePalDefenderConfig(input: PalDefenderConfig): Promise<void> {
     const current = await this.read();
     const tokenEncrypted = input.token ? this.encrypt(input.token) : current.palDefenderTokenEncrypted;
+    const rconPasswordEncrypted = input.rconPassword ? this.encrypt(input.rconPassword) : current.rconPasswordEncrypted;
     await this.write({
       ...current,
       palDefenderUrl: input.baseUrl,
       palDefenderTokenEncrypted: tokenEncrypted,
+      rconPasswordEncrypted,
+      rconPort: input.rconPort ?? current.rconPort,
+      palworldServerDir: input.serverDir ?? current.palworldServerDir,
       palworldPlayerId: input.playerId,
       testMode: input.testMode,
     });
@@ -63,6 +72,9 @@ export class SecureConfigStore {
       token: stored.palDefenderTokenEncrypted ? this.decrypt(stored.palDefenderTokenEncrypted) : '',
       playerId: stored.palworldPlayerId ?? '',
       testMode: stored.testMode ?? true,
+      rconPassword: stored.rconPasswordEncrypted ? this.decrypt(stored.rconPasswordEncrypted) : '',
+      rconPort: stored.rconPort ?? 25575,
+      serverDir: stored.palworldServerDir ?? '',
     };
   }
 
