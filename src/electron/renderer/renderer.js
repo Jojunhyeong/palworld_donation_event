@@ -1,14 +1,9 @@
 const api = window.desktopApi;
-const form = document.querySelector('#config-form');
 const connectButton = document.querySelector('#connect-button');
 const statusText = document.querySelector('#chzzk-status');
 const globalStatus = document.querySelector('#global-status');
 const activityList = document.querySelector('#activity-list');
-const savedBadge = document.querySelector('#saved-badge');
-const palworldForm = document.querySelector('#palworld-form');
 const palworldStatus = document.querySelector('#palworld-status');
-const palworldSavedBadge = document.querySelector('#palworld-saved-badge');
-const playerSelect = document.querySelector('#palworld-player');
 let isConnected = false;
 
 function setChzzkStatus(status) {
@@ -48,35 +43,7 @@ function addActivity(kind, title, message) {
 
 async function loadConfig() {
   const config = await api.getConfig();
-  document.querySelector('#client-id').value = config.clientId;
-  document.querySelector('#redirect-uri').value = config.redirectUri;
-  savedBadge.textContent = config.hasClientSecret ? '저장됨' : '미저장';
-  savedBadge.classList.toggle('saved', config.hasClientSecret);
-  document.querySelector('#paldefender-url').value = config.palDefenderUrl;
-  document.querySelector('#test-mode').checked = config.testMode;
-  palworldSavedBadge.textContent = config.hasPalDefenderToken ? '저장됨' : '미저장';
-  palworldSavedBadge.classList.toggle('saved', config.hasPalDefenderToken);
-  if (config.palworldPlayerId) {
-    playerSelect.replaceChildren(new Option(config.palworldPlayerId, config.palworldPlayerId, true, true));
-  }
 }
-
-form.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  try {
-    await api.saveConfig({
-      clientId: document.querySelector('#client-id').value,
-      clientSecret: document.querySelector('#client-secret').value,
-      redirectUri: document.querySelector('#redirect-uri').value,
-    });
-    document.querySelector('#client-secret').value = '';
-    savedBadge.textContent = '저장됨';
-    savedBadge.classList.add('saved');
-    addActivity('success', '설정 저장', '보안 저장소에 암호화해 저장했습니다.');
-  } catch (error) {
-    addActivity('error', '설정 저장 실패', error.message ?? String(error));
-  }
-});
 
 connectButton.addEventListener('click', async () => {
   if (isConnected) {
@@ -87,45 +54,21 @@ connectButton.addEventListener('click', async () => {
   if (!result.ok) addActivity('error', '치지직 연결 실패', result.message);
 });
 
-async function savePalworldConfig() {
-  const config = await api.savePalworldConfig({
-    baseUrl: document.querySelector('#paldefender-url').value,
-    token: document.querySelector('#paldefender-token').value,
-    playerId: playerSelect.value,
-    testMode: document.querySelector('#test-mode').checked,
-  });
-  document.querySelector('#paldefender-token').value = '';
-  palworldSavedBadge.textContent = config.hasPalDefenderToken ? '저장됨' : '설정 저장됨';
-  palworldSavedBadge.classList.add('saved');
-}
-
-palworldForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  try {
-    await savePalworldConfig();
-    addActivity('success', '서버 설정 저장', 'PalDefender 연결 정보를 암호화해 저장했습니다.');
-  } catch (error) {
-    addActivity('error', '서버 설정 실패', error.message ?? String(error));
-  }
-});
-
 document.querySelector('#palworld-test-button').addEventListener('click', async () => {
   try {
-    await savePalworldConfig();
     palworldStatus.textContent = '연결 확인 중';
     const result = await api.testPalworld();
     if (!result.ok) throw new Error(result.message);
-    const previous = playerSelect.value;
-    playerSelect.replaceChildren(new Option('캐릭터를 선택하세요', ''));
-    result.players.forEach((player) => {
-      const id = player.UserId || player.PlayerUID;
-      playerSelect.add(new Option(`${player.Name} · ${player.Status}`, id, false, id === previous));
-    });
     addActivity('success', 'PalDefender 연결 성공', `${result.players.length}명의 캐릭터를 확인했습니다.`);
   } catch (error) {
     setPalworldStatus('error');
     addActivity('error', 'PalDefender 연결 실패', error.message ?? String(error));
   }
+});
+
+document.querySelector('#palworld-setup-button').addEventListener('click', async () => {
+  const result = await api.preparePalworld();
+  addActivity(result.ok ? 'success' : 'system', '팰월드 서버 준비', result.message);
 });
 
 document.querySelectorAll('[data-test-amount]').forEach((button) => {

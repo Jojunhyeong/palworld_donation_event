@@ -1,12 +1,13 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import path from 'path';
-import { authorizeWithLocalCallback, ChzzkAuthConfig } from '../chzzk/auth';
+import { authorizeWithRemoteService } from '../chzzk/remote-auth';
 import { createChzzkSession } from '../chzzk/session';
 import { connectDonationListener } from '../chzzk/donation-listener';
 import { getSafeErrorMessage } from '../chzzk/api-error';
 import { SecureConfigStore } from './secure-config';
-import { PalDefenderClient, PalDefenderConfig } from '../palworld/paldefender-client';
+import { PalDefenderClient } from '../palworld/paldefender-client';
 import { resolveDonationEffect } from '../donation/effect-engine';
+import { AUTH_SERVICE_URL } from '../config/product';
 
 let mainWindow: BrowserWindow | null = null;
 let socket: SocketIOClient.Socket | null = null;
@@ -28,22 +29,6 @@ function registerIpc(): void {
     return configStore.getPublicConfig();
   });
 
-  ipcMain.handle('config:save', async (event, input: ChzzkAuthConfig) => {
-    assertTrustedSender(event.senderFrame?.url ?? '');
-    const clientId = String(input?.clientId ?? '').trim();
-    const clientSecret = String(input?.clientSecret ?? '').trim();
-    const redirectUri = String(input?.redirectUri ?? '').trim();
-
-    if (!clientId || !redirectUri) throw new Error('Client ID와 리디렉션 URL을 입력해 주세요.');
-    const url = new URL(redirectUri);
-    if (url.protocol !== 'http:' || !['localhost', '127.0.0.1'].includes(url.hostname)) {
-      throw new Error('리디렉션 URL은 localhost HTTP 주소여야 합니다.');
-    }
-
-    await configStore.saveAuthConfig({ clientId, clientSecret, redirectUri });
-    return configStore.getPublicConfig();
-  });
-
   ipcMain.handle('chzzk:connect', async (event) => {
     assertTrustedSender(event.senderFrame?.url ?? '');
     socket?.disconnect();
@@ -51,8 +36,7 @@ function registerIpc(): void {
 
     try {
       sendEvent('status', { chzzk: 'authorizing' });
-      const config = await configStore.getAuthConfig();
-      const tokens = await authorizeWithLocalCallback(config, async (url) => {
+      const tokens = await authorizeWithRemoteService(AUTH_SERVICE_URL, async (url) => {
         await shell.openExternal(url);
       });
       await configStore.saveTokens(tokens);
@@ -85,24 +69,11 @@ function registerIpc(): void {
     sendEvent('status', { chzzk: 'disconnected' });
   });
 
-  ipcMain.handle('palworld:save', async (event, input: PalDefenderConfig) => {
-    assertTrustedSender(event.senderFrame?.url ?? '');
-    const baseUrl = String(input?.baseUrl ?? '').trim();
-    const token = String(input?.token ?? '').trim();
-    const playerId = String(input?.playerId ?? '').trim();
-    const url = new URL(baseUrl);
-    if (url.protocol !== 'http:' || !['localhost', '127.0.0.1'].includes(url.hostname)) {
-      throw new Error('PalDefender API는 이 PC의 localhost 주소만 사용할 수 있습니다.');
-    }
-    await configStore.savePalDefenderConfig({ baseUrl, token, playerId, testMode: Boolean(input.testMode) });
-    return configStore.getPublicConfig();
-  });
-
   ipcMain.handle('palworld:test', async (event) => {
     assertTrustedSender(event.senderFrame?.url ?? '');
     try {
       const config = await configStore.getPalDefenderConfig();
-      if (!config.token) throw new Error('PalDefender API 토큰을 입력해 주세요.');
+      if (!config.token) throw new Error('팰월드 서버 자동 설정을 먼저 완료해 주세요.');
       const client = new PalDefenderClient(config);
       await client.getVersion();
       const players = await client.getPlayers();
@@ -118,6 +89,14 @@ function registerIpc(): void {
   ipcMain.handle('effect:test', (event, amount: number) => {
     assertTrustedSender(event.senderFrame?.url ?? '');
     return emitEffect(amount, '테스트');
+  });
+
+  ipcMain.handle('palworld:prepare', (event) => {
+    assertTrustedSender(event.senderFrame?.url ?? '');
+    return {
+      ok: false,
+      message: '팰월드 서버 자동 설치 기능을 준비 중입니다.',
+    };
   });
 }
 

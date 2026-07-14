@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pal-donation-auth",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-14",
+  "vars": {
+    "CHZZK_CLIENT_ID": "YOUR_CLIENT_ID",
+    "CHZZK_REDIRECT_URI": "https://YOUR_WORKER.workers.dev/auth/callback"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "OAUTH_SESSIONS",
+      "id": "00000000000000000000000000000000"
+    }
+  ],
+  "secrets": {
+    "required": ["CHZZK_CLIENT_SECRET"]
+  }
+}

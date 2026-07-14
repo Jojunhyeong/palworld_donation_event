@@ -36,15 +36,13 @@
       </section>
 
       <section class="grid content-grid">
-        <article class="card settings-card">
-          <div class="section-title"><div><p class="label">초기 설정</p><h2>치지직 앱 정보</h2></div><span id="saved-badge" class="badge">미저장</span></div>
-          <form id="config-form">
-            <label>Client ID<input id="client-id" autocomplete="off" required /></label>
-            <label>Client Secret<input id="client-secret" type="password" autocomplete="new-password" placeholder="저장된 경우 비워두세요" /></label>
-            <label>리디렉션 URL<input id="redirect-uri" value="http://localhost:3000/auth/callback" required /></label>
-            <p class="hint">Secret은 Windows 보안 저장소로 암호화되며 화면에 다시 표시되지 않습니다.</p>
-            <button class="secondary save-button" type="submit">설정 저장</button>
-          </form>
+        <article class="card start-card">
+          <div class="section-title"><div><p class="label">간편 시작</p><h2>3단계면 준비 완료</h2></div><span class="badge saved">추가 설정 없음</span></div>
+          <ol class="steps">
+            <li><b>1</b><div><strong>치지직 연결</strong><span>버튼을 누르고 브라우저에서 로그인</span></div></li>
+            <li><b>2</b><div><strong>팰월드 서버 확인</strong><span>서버와 캐릭터를 자동으로 탐지</span></div></li>
+            <li><b>3</b><div><strong>후원 연동 시작</strong><span>테스트 후 방송에서 사용</span></div></li>
+          </ol>
         </article>
 
         <article class="card activity-card">
@@ -56,14 +54,11 @@
       </section>
 
       <section class="card palworld-settings-card">
-        <div class="section-title"><div><p class="label">서버 설정</p><h2>PalDefender 연결</h2></div><span id="palworld-saved-badge" class="badge">미저장</span></div>
-        <form id="palworld-form" class="palworld-form">
-          <label>API 주소<input id="paldefender-url" value="http://127.0.0.1:17993" required /></label>
-          <label>API 토큰<input id="paldefender-token" type="password" autocomplete="new-password" placeholder="저장된 경우 비워두세요" /></label>
-          <label>스트리머 캐릭터<select id="palworld-player"><option value="">연결 확인 후 선택</option></select></label>
-          <label class="toggle-label"><input id="test-mode" type="checkbox" checked /><span>테스트 모드</span><small>실제 게임은 변경하지 않고 효과만 표시</small></label>
-          <button class="secondary save-button" type="submit">서버 설정 저장</button>
-        </form>
+        <div class="section-title"><div><p class="label">자동 준비</p><h2>팰월드 서버</h2></div><span class="badge waiting">로컬 PC 전용</span></div>
+        <div class="server-setup">
+          <div><strong>복잡한 주소나 토큰을 입력할 필요가 없습니다.</strong><p>서버 파일, PalDefender, 보안 토큰과 스트리머 캐릭터를 앱이 자동으로 준비합니다.</p></div>
+          <button id="palworld-setup-button" class="secondary">서버 자동 설정</button>
+        </div>
       </section>
 
       <section class="card rules-card">

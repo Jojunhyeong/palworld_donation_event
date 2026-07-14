@@ -2,13 +2,9 @@ import { app, safeStorage } from 'electron';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { ChzzkAuthTokens } from '../types';
-import { ChzzkAuthConfig } from '../chzzk/auth';
 import { PalDefenderConfig } from '../palworld/paldefender-client';
 
 interface StoredConfig {
-  clientId?: string;
-  redirectUri?: string;
-  clientSecretEncrypted?: string;
   accessTokenEncrypted?: string;
   refreshTokenEncrypted?: string;
   palDefenderUrl?: string;
@@ -18,9 +14,6 @@ interface StoredConfig {
 }
 
 export interface PublicConfig {
-  clientId: string;
-  redirectUri: string;
-  hasClientSecret: boolean;
   palDefenderUrl: string;
   hasPalDefenderToken: boolean;
   palworldPlayerId: string;
@@ -35,44 +28,10 @@ export class SecureConfigStore {
   async getPublicConfig(): Promise<PublicConfig> {
     const stored = await this.read();
     return {
-      clientId: stored.clientId ?? '',
-      redirectUri: stored.redirectUri ?? 'http://localhost:3000/auth/callback',
-      hasClientSecret: Boolean(stored.clientSecretEncrypted),
       palDefenderUrl: stored.palDefenderUrl ?? 'http://127.0.0.1:17993',
       hasPalDefenderToken: Boolean(stored.palDefenderTokenEncrypted),
       palworldPlayerId: stored.palworldPlayerId ?? '',
       testMode: stored.testMode ?? true,
-    };
-  }
-
-  async saveAuthConfig(input: ChzzkAuthConfig): Promise<void> {
-    const current = await this.read();
-    const clientSecretEncrypted = input.clientSecret
-      ? this.encrypt(input.clientSecret)
-      : current.clientSecretEncrypted;
-
-    if (!clientSecretEncrypted) {
-      throw new Error('Client Secret을 입력해 주세요.');
-    }
-
-    await this.write({
-      ...current,
-      clientId: input.clientId,
-      redirectUri: input.redirectUri,
-      clientSecretEncrypted,
-    });
-  }
-
-  async getAuthConfig(): Promise<ChzzkAuthConfig> {
-    const stored = await this.read();
-    if (!stored.clientId || !stored.redirectUri || !stored.clientSecretEncrypted) {
-      throw new Error('치지직 앱 설정을 먼저 저장해 주세요.');
-    }
-
-    return {
-      clientId: stored.clientId,
-      redirectUri: stored.redirectUri,
-      clientSecret: this.decrypt(stored.clientSecretEncrypted),
     };
   }
 
@@ -120,7 +79,13 @@ export class SecureConfigStore {
 
   private async read(): Promise<StoredConfig> {
     try {
-      return JSON.parse(await fs.readFile(this.filePath, 'utf8')) as StoredConfig;
+      const parsed = JSON.parse(await fs.readFile(this.filePath, 'utf8')) as StoredConfig & {
+        clientId?: string;
+        redirectUri?: string;
+        clientSecretEncrypted?: string;
+      };
+      const { clientId: _clientId, redirectUri: _redirectUri, clientSecretEncrypted: _clientSecret, ...stored } = parsed;
+      return stored;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {};
       throw error;

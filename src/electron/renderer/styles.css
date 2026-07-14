@@ -30,6 +30,13 @@ h2 { margin: 0; font-size: 19px; letter-spacing: -.02em; }
 .secondary { color: #e7edf6; background: #273140; border: 1px solid #344052; }
 .secondary:hover:not(:disabled) { background: #313d4d; }
 .settings-card, .activity-card, .rules-card { padding: 24px; }
+.start-card { padding: 24px; }
+.steps { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.steps li { display: flex; align-items: center; gap: 12px; }
+.steps b { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 9px; color: #07130c; background: #00e676; font-size: 12px; }
+.steps div { display: grid; gap: 3px; }
+.steps strong { font-size: 13px; }
+.steps span { color: #7f8c9f; font-size: 11px; }
 .section-title { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 22px; }
 .badge { padding: 6px 9px; border-radius: 8px; background: #2a313c; color: #8f9bad; font-size: 11px; font-weight: 800; }
 .badge.saved { color: #55e989; background: rgba(85, 233, 137, .1); }
@@ -53,6 +60,9 @@ input:focus, select:focus { border-color: #00c967; box-shadow: 0 0 0 3px rgba(0,
 .activity-item.donation { border-color: #f5bd55; background: rgba(245, 189, 85, .06); }
 .activity-item.effect { border-color: #b781ff; background: rgba(183, 129, 255, .06); }
 .palworld-settings-card { margin-bottom: 18px; padding: 24px; }
+.server-setup { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.server-setup strong { font-size: 14px; }
+.server-setup p { max-width: 700px; margin: 6px 0 0; color: #7f8c9f; font-size: 12px; line-height: 1.55; }
 .palworld-form { grid-template-columns: 1.1fr 1fr 1fr auto; align-items: end; }
 .toggle-label { grid-template-columns: auto auto; align-items: center; justify-content: start; column-gap: 8px; }
 .toggle-label input { width: 17px; height: 17px; accent-color: #00e676; }
