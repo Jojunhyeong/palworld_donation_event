@@ -28,6 +28,14 @@ jobs:
       - name: Build Windows installer
         run: npm run make:win
 
+      - name: Verify secrets are excluded
+        shell: pwsh
+        run: |
+          $asar = "out/PalDonationBridge-win32-x64/resources/app.asar"
+          if (-not (Test-Path $asar)) { throw "Packaged app.asar was not found." }
+          $blocked = npx asar list $asar | Select-String '^/(\.env(?:\..*)?|worker(?:/|$)|docs(?:/|$)|\.github(?:/|$))'
+          if ($blocked) { throw "Sensitive development files were included in app.asar: $blocked" }
+
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
