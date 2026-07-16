@@ -25,8 +25,8 @@ function setChzzkStatus(status) {
 function setPalworldStatus(status) {
   const labels = {
     connected: '연결됨',
-    preparing: '설치·설정 중',
-    ready: '설정 완료',
+    preparing: '모드 설치 중',
+    ready: '모드 설치 완료',
     error: '연결 오류',
   };
   palworldStatus.textContent = labels[status] ?? '연결 안 됨';
@@ -49,7 +49,7 @@ function addActivity(kind, title, message) {
 
 async function loadConfig() {
   const config = await api.getConfig();
-  if (config.serverInstalled) setPalworldStatus('ready');
+  if (config.clientModInstalled) setPalworldStatus('ready');
 }
 
 connectButton.addEventListener('click', async () => {
@@ -66,25 +66,25 @@ document.querySelector('#palworld-test-button').addEventListener('click', async 
     palworldStatus.textContent = '연결 확인 중';
     const result = await api.testPalworld();
     if (!result.ok) throw new Error(result.message);
-    addActivity('success', 'PalDefender 연결 성공', `${result.players.length}명의 캐릭터를 확인했습니다.`);
+    addActivity('success', '팰월드 연결 성공', '일반 초대방에서 방장 모드가 실행 중입니다.');
   } catch (error) {
     setPalworldStatus('error');
-    addActivity('error', 'PalDefender 연결 실패', error.message ?? String(error));
+    addActivity('error', '팰월드 연결 실패', error.message ?? String(error));
   }
 });
 
 document.querySelector('#palworld-setup-button').addEventListener('click', async () => {
   const button = document.querySelector('#palworld-setup-button');
   button.disabled = true;
-  button.textContent = '설치·설정 중';
+  button.textContent = '모드 설치 중';
   try {
     const result = await api.preparePalworld();
-    addActivity(result.ok ? 'success' : 'error', '팰월드 서버 준비', result.message);
+    addActivity(result.ok ? 'success' : 'error', '방장 모드 설치', result.message);
   } catch (error) {
-    addActivity('error', '팰월드 서버 준비', error.message ?? String(error));
+    addActivity('error', '방장 모드 설치', error.message ?? String(error));
   } finally {
     button.disabled = false;
-    button.textContent = '서버 자동 설정';
+    button.textContent = '방장 모드 설치';
   }
 });
 

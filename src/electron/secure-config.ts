@@ -2,7 +2,6 @@ import { app, safeStorage } from 'electron';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { ChzzkAuthTokens } from '../types';
-import { PalDefenderConfig } from '../palworld/paldefender-client';
 
 interface StoredConfig {
   accessTokenEncrypted?: string;
@@ -14,14 +13,11 @@ interface StoredConfig {
   palworldServerDir?: string;
   palworldPlayerId?: string;
   testMode?: boolean;
+  palworldGameWin64Dir?: string;
 }
 
 export interface PublicConfig {
-  palDefenderUrl: string;
-  hasPalDefenderToken: boolean;
-  palworldPlayerId: string;
-  testMode: boolean;
-  serverInstalled: boolean;
+  clientModInstalled: boolean;
 }
 
 export class SecureConfigStore {
@@ -32,12 +28,18 @@ export class SecureConfigStore {
   async getPublicConfig(): Promise<PublicConfig> {
     const stored = await this.read();
     return {
-      palDefenderUrl: stored.palDefenderUrl ?? 'http://127.0.0.1:17993',
-      hasPalDefenderToken: Boolean(stored.palDefenderTokenEncrypted),
-      palworldPlayerId: stored.palworldPlayerId ?? '',
-      testMode: stored.testMode ?? true,
-      serverInstalled: Boolean(stored.palworldServerDir),
+      clientModInstalled: Boolean(stored.palworldGameWin64Dir),
     };
+  }
+
+  async saveClientModConfig(gameWin64Dir: string): Promise<void> {
+    const current = await this.read();
+    await this.write({ ...current, palworldGameWin64Dir: gameWin64Dir });
+  }
+
+  async getClientModConfig(): Promise<{ gameWin64Dir: string }> {
+    const stored = await this.read();
+    return { gameWin64Dir: stored.palworldGameWin64Dir ?? '' };
   }
 
   async saveTokens(tokens: ChzzkAuthTokens): Promise<void> {
@@ -47,35 +49,6 @@ export class SecureConfigStore {
       accessTokenEncrypted: this.encrypt(tokens.accessToken),
       refreshTokenEncrypted: tokens.refreshToken ? this.encrypt(tokens.refreshToken) : undefined,
     });
-  }
-
-  async savePalDefenderConfig(input: PalDefenderConfig): Promise<void> {
-    const current = await this.read();
-    const tokenEncrypted = input.token ? this.encrypt(input.token) : current.palDefenderTokenEncrypted;
-    const rconPasswordEncrypted = input.rconPassword ? this.encrypt(input.rconPassword) : current.rconPasswordEncrypted;
-    await this.write({
-      ...current,
-      palDefenderUrl: input.baseUrl,
-      palDefenderTokenEncrypted: tokenEncrypted,
-      rconPasswordEncrypted,
-      rconPort: input.rconPort ?? current.rconPort,
-      palworldServerDir: input.serverDir ?? current.palworldServerDir,
-      palworldPlayerId: input.playerId,
-      testMode: input.testMode,
-    });
-  }
-
-  async getPalDefenderConfig(): Promise<PalDefenderConfig> {
-    const stored = await this.read();
-    return {
-      baseUrl: stored.palDefenderUrl ?? 'http://127.0.0.1:17993',
-      token: stored.palDefenderTokenEncrypted ? this.decrypt(stored.palDefenderTokenEncrypted) : '',
-      playerId: stored.palworldPlayerId ?? '',
-      testMode: stored.testMode ?? true,
-      rconPassword: stored.rconPasswordEncrypted ? this.decrypt(stored.rconPasswordEncrypted) : '',
-      rconPort: stored.rconPort ?? 25575,
-      serverDir: stored.palworldServerDir ?? '',
-    };
   }
 
   private encrypt(value: string): string {

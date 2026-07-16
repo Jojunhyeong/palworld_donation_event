@@ -5,16 +5,14 @@ import { createChzzkSession } from '../chzzk/session';
 import { connectDonationListener } from '../chzzk/donation-listener';
 import { getSafeErrorMessage } from '../chzzk/api-error';
 import { SecureConfigStore } from './secure-config';
-import { PalDefenderClient } from '../palworld/paldefender-client';
-import { executeDonationEffect } from '../palworld/effect-executor';
-import { PalworldServerManager } from '../palworld/server-manager';
+import { PalworldClientModManager } from '../palworld/client-mod-manager';
 import { resolveDonationEffect } from '../donation/effect-engine';
 import { AUTH_SERVICE_URL } from '../config/product';
 
 let mainWindow: BrowserWindow | null = null;
 let socket: SocketIOClient.Socket | null = null;
 const configStore = new SecureConfigStore();
-let palworldManager: PalworldServerManager | null = null;
+let palworldManager: PalworldClientModManager | null = null;
 
 function sendEvent(type: string, payload: unknown): void {
   mainWindow?.webContents.send('app:event', { type, payload });
@@ -75,20 +73,15 @@ function registerIpc(): void {
   ipcMain.handle('palworld:test', async (event) => {
     assertTrustedSender(event.senderFrame?.url ?? '');
     try {
-      const config = await configStore.getPalDefenderConfig();
-      if (!config.token) throw new Error('팰월드 서버 자동 설정을 먼저 완료해 주세요.');
-      await palworldManager?.ensureStarted(config, (message) => sendEvent('log', { level: 'info', message }));
-      const client = new PalDefenderClient(config);
-      await client.getVersion();
-      const players = await client.getPlayers();
-      const selected = players.find((player) => /online|connected/i.test(player.Status ?? '')) ?? (players.length === 1 ? players[0] : undefined);
-      if (selected) {
-        await configStore.savePalDefenderConfig({ ...config, playerId: selected.UserId || selected.PlayerUID });
-      }
+      if (!palworldManager) throw new Error('팰월드 모드 관리자를 시작하지 못했습니다.');
+      const config = await configStore.getClientModConfig();
+      const status = await palworldManager.status(config);
+      if (!status.installed) throw new Error('일반 초대방 모드를 먼저 설치해 주세요.');
+      if (!status.gameRunning) throw new Error('팰월드를 실행하고 멀티플레이 월드에 들어가 주세요.');
       sendEvent('status', { palworld: 'connected' });
-      return { ok: true, players };
+      return { ok: true };
     } catch (error) {
-      const message = getSafeErrorMessage(error, 'PalDefender 연결에 실패했습니다.');
+      const message = getSafeErrorMessage(error, '팰월드 초대방 연결에 실패했습니다.');
       sendEvent('status', { palworld: 'error' });
       return { ok: false, message };
     }
@@ -102,20 +95,14 @@ function registerIpc(): void {
   ipcMain.handle('palworld:prepare', async (event) => {
     assertTrustedSender(event.senderFrame?.url ?? '');
     try {
-      if (!palworldManager) throw new Error('팰월드 서버 관리자를 시작하지 못했습니다.');
+      if (!palworldManager) throw new Error('팰월드 모드 관리자를 시작하지 못했습니다.');
       sendEvent('status', { palworld: 'preparing' });
-      const existing = await configStore.getPalDefenderConfig();
-      if (existing.token && existing.serverDir) {
-        await palworldManager.updateAndStart(existing, (message) => sendEvent('log', { level: 'info', message }));
-        sendEvent('status', { palworld: 'connected' });
-        return { ok: true, message: '팰월드 서버를 최신 버전으로 업데이트하고 연결했습니다.' };
-      }
       const config = await palworldManager.prepare((message) => sendEvent('log', { level: 'info', message }));
-      await configStore.savePalDefenderConfig(config);
-      sendEvent('status', { palworld: 'connected' });
-      return { ok: true, message: '팰월드 전용 서버 설치와 연결을 완료했습니다.' };
+      await configStore.saveClientModConfig(config.gameWin64Dir);
+      sendEvent('status', { palworld: 'ready' });
+      return { ok: true, message: '일반 초대방용 방장 모드를 설치했습니다. 팰월드를 완전히 다시 실행해 주세요.' };
     } catch (error) {
-      const message = getSafeErrorMessage(error, '팰월드 서버 자동 설정에 실패했습니다.');
+      const message = getSafeErrorMessage(error, '방장 모드 자동 설치에 실패했습니다.');
       sendEvent('status', { palworld: 'error' });
       return { ok: false, message };
     }
@@ -126,15 +113,11 @@ async function emitEffect(amount: string | number, source: string): Promise<{ ok
   const effect = resolveDonationEffect(amount);
   if (!effect) return { ok: false, message: '해당 금액에 등록된 효과가 없습니다.' };
   try {
-    const config = await configStore.getPalDefenderConfig();
-    if (!config.token) throw new Error('팰월드 서버 자동 설정을 먼저 완료해 주세요.');
-    await palworldManager?.ensureStarted(config, (message) => sendEvent('log', { level: 'info', message }));
-    const result = await executeDonationEffect(effect, config);
-    const playerId = result.player.UserId || result.player.PlayerUID;
-    if (playerId && playerId !== config.playerId) {
-      await configStore.savePalDefenderConfig({ ...config, playerId });
-    }
-    sendEvent('effect', { ...effect, detail: result.detail, source, mode: 'live' });
+    if (!palworldManager) throw new Error('팰월드 모드 관리자를 시작하지 못했습니다.');
+    if (effect.kind !== 'meat') throw new Error('일반 초대방 시험판은 현재 1,000원 효과만 사용할 수 있습니다.');
+    const config = await configStore.getClientModConfig();
+    await palworldManager.giveItem(config, 'Meat_ChickenPal', 5);
+    sendEvent('effect', { ...effect, detail: '방장에게 닭고기 5개를 지급했습니다.', source, mode: 'live' });
     return { ok: true };
   } catch (error) {
     const message = getSafeErrorMessage(error, '팰월드 효과 실행에 실패했습니다.');
@@ -169,7 +152,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  palworldManager = new PalworldServerManager(path.join(app.getPath('userData'), 'palworld'));
+  palworldManager = new PalworldClientModManager(path.join(app.getPath('userData'), 'client-mod'));
   registerIpc();
   createWindow();
   app.on('activate', () => {
@@ -180,8 +163,4 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   socket?.disconnect();
   if (process.platform !== 'darwin') app.quit();
-});
-
-app.on('before-quit', () => {
-  palworldManager?.stop();
 });
