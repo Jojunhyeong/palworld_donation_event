@@ -153,6 +153,8 @@ export class PalworldServerManager {
     onProgress('업데이트된 팰월드 서버를 시작하는 중입니다.');
     this.serverProcess = this.spawnServer(serverExe, config.serverDir, onProgress);
     await waitForPalDefender(config, 90_000);
+    const info = await new PalDefenderClient(config).sendRcon('Info').catch(() => '버전 정보를 가져오지 못했습니다.');
+    onProgress(`팰월드 서버 버전: ${String(info).trim().slice(0, 300)}`);
   }
 
   stop(): void {
@@ -166,6 +168,7 @@ export class PalworldServerManager {
       this.serverProcess = null;
       onProgress('업데이트를 위해 실행 중인 팰월드 서버를 종료합니다.');
       await stopProcessTree(running);
+      await stopAllPalServerProcesses();
       await waitForPalDefenderDown(config, 20_000);
       return;
     }
@@ -174,8 +177,7 @@ export class PalworldServerManager {
     try {
       await client.getVersion();
     } catch {
-      await runProcess('taskkill.exe', ['/IM', 'PalServer.exe', '/T', '/F']).catch(() => undefined);
-      await delay(1_000);
+      await stopAllPalServerProcesses();
       return;
     }
     onProgress('업데이트를 위해 실행 중인 팰월드 서버를 종료합니다.');
@@ -183,9 +185,10 @@ export class PalworldServerManager {
     try {
       await waitForPalDefenderDown(config, 20_000);
     } catch {
-      await runProcess('taskkill.exe', ['/IM', 'PalServer.exe', '/T', '/F']).catch(() => undefined);
-      await waitForPalDefenderDown(config, 10_000);
+      // 아래에서 남은 하위 프로세스까지 함께 종료합니다.
     }
+    await stopAllPalServerProcesses();
+    await waitForPalDefenderDown(config, 10_000);
   }
 
   private spawnServer(serverExe: string, serverDir: string, onProgress: ProgressHandler): ChildProcessWithoutNullStreams {
@@ -268,8 +271,13 @@ async function assertSha256(filePath: string, expected: string): Promise<void> {
 
 async function runSteamCmd(command: string, args: string[], onProgress: ProgressHandler): Promise<void> {
   for (let attempt = 1; attempt <= 3; attempt += 1) {
-    const exitCode = await runProcess(command, args, [0, 7]);
-    if (exitCode === 0) return;
+    const result = await runProcessDetailed(command, args, [0, 7]);
+    if (result.exitCode === 0) {
+      if (!result.tail.includes(`Success! App '${PALWORLD_APP_ID}' fully installed.`)) {
+        throw new Error(`SteamCMD가 서버 설치 완료를 확인하지 못했습니다. ${result.tail}`);
+      }
+      return;
+    }
 
     onProgress('SteamCMD 자체 업데이트가 완료되어 재시작을 기다리는 중입니다.');
     await waitForWindowsProcessExit('steamcmd.exe', 30 * 60_000);
@@ -280,7 +288,15 @@ async function runSteamCmd(command: string, args: string[], onProgress: Progress
 }
 
 async function runProcess(command: string, args: string[], acceptedExitCodes: number[] = [0]): Promise<number> {
-  return new Promise<number>((resolve, reject) => {
+  return (await runProcessDetailed(command, args, acceptedExitCodes)).exitCode;
+}
+
+async function runProcessDetailed(
+  command: string,
+  args: string[],
+  acceptedExitCodes: number[] = [0],
+): Promise<{ exitCode: number; tail: string }> {
+  return new Promise<{ exitCode: number; tail: string }>((resolve, reject) => {
     const child = spawn(command, args, { windowsHide: true, stdio: 'pipe' });
     let tail = '';
     child.stdout.on('data', (chunk: Buffer) => { tail = `${tail}${chunk.toString('utf8')}`.slice(-2_000); });
@@ -288,10 +304,21 @@ async function runProcess(command: string, args: string[], acceptedExitCodes: nu
     child.on('error', reject);
     child.on('exit', (code) => {
       const exitCode = code ?? -1;
-      if (acceptedExitCodes.includes(exitCode)) resolve(exitCode);
+      if (acceptedExitCodes.includes(exitCode)) resolve({ exitCode, tail });
       else reject(new Error(`설치 프로그램이 종료 코드 ${exitCode}로 실패했습니다. ${tail}`));
     });
   });
+}
+
+async function stopAllPalServerProcesses(): Promise<void> {
+  const images = ['PalServer.exe', 'PalServer-Win64-Shipping-Cmd.exe', 'PalServer-Win64-Shipping.exe'];
+  for (const image of images) {
+    await runProcess('taskkill.exe', ['/IM', image, '/T', '/F']).catch(() => undefined);
+  }
+  for (const image of images) {
+    await waitForWindowsProcessExit(image, 15_000);
+  }
+  await delay(1_000);
 }
 
 async function waitForWindowsProcessExit(imageName: string, timeoutMs: number): Promise<void> {
