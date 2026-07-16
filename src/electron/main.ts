@@ -106,9 +106,9 @@ function registerIpc(): void {
       sendEvent('status', { palworld: 'preparing' });
       const existing = await configStore.getPalDefenderConfig();
       if (existing.token && existing.serverDir) {
-        await palworldManager.ensureStarted(existing, (message) => sendEvent('log', { level: 'info', message }));
+        await palworldManager.updateAndStart(existing, (message) => sendEvent('log', { level: 'info', message }));
         sendEvent('status', { palworld: 'connected' });
-        return { ok: true, message: '설치된 팰월드 서버를 시작하고 연결했습니다.' };
+        return { ok: true, message: '팰월드 서버를 최신 버전으로 업데이트하고 연결했습니다.' };
       }
       const config = await palworldManager.prepare((message) => sendEvent('log', { level: 'info', message }));
       await configStore.savePalDefenderConfig(config);

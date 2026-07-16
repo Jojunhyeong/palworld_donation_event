@@ -9,8 +9,9 @@ import { pipeline } from 'stream/promises';
 import { PalDefenderClient, PalDefenderConfig } from './paldefender-client';
 
 const STEAMCMD_URL = 'https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip';
-const PALDEFENDER_URL = 'https://github.com/Ultimeit/PalDefender/releases/download/v1.8.1/PalDefender.zip';
-const PALDEFENDER_SHA256 = '4826d7d181c092f2983b71a119324e6b5782ae4d10280b18194d65ce332f4671';
+const PALDEFENDER_VERSION = 'v1.8.3';
+const PALDEFENDER_URL = `https://github.com/Ultimeit/PalDefender/releases/download/${PALDEFENDER_VERSION}/PalDefender.zip`;
+const PALDEFENDER_SHA256 = '2ec395237018b18b91b6e25ed1338f9e203814a6a3fd5fec8408eba10bfb35c8';
 const PALWORLD_APP_ID = '2394010';
 const REST_PORT = 17993;
 const RCON_PORT = 25575;
@@ -76,12 +77,7 @@ export class PalworldServerManager {
       throw new Error('팰월드 전용 서버 설치 파일을 찾지 못했습니다.');
     }
 
-    onProgress('PalDefender를 검증하고 설치하는 중입니다.');
-    const palDefenderZip = path.join(downloadDir, 'PalDefender-v1.8.1.zip');
-    await downloadFile(PALDEFENDER_URL, palDefenderZip);
-    await assertSha256(palDefenderZip, PALDEFENDER_SHA256);
-    await fs.mkdir(win64Dir, { recursive: true });
-    await extract(palDefenderZip, { dir: win64Dir });
+    await installPalDefender(downloadDir, win64Dir, onProgress);
 
     if (!(await fileExists(restConfigPath))) {
       onProgress('첫 실행으로 서버 설정 파일을 만드는 중입니다.');
@@ -134,9 +130,62 @@ export class PalworldServerManager {
     await waitForPalDefender(config, 90_000);
   }
 
+  async updateAndStart(config: PalDefenderConfig, onProgress: ProgressHandler): Promise<void> {
+    if (!this.supported || !config.serverDir) throw new Error('팰월드 서버 자동 설정을 먼저 완료해 주세요.');
+    const steamcmdDir = path.join(this.rootDir, 'steamcmd');
+    const downloadDir = path.join(this.rootDir, 'downloads');
+    const steamcmdExe = path.join(steamcmdDir, 'steamcmd.exe');
+    const serverExe = path.join(config.serverDir, 'PalServer.exe');
+    const win64Dir = path.join(config.serverDir, 'Pal', 'Binaries', 'Win64');
+    if (!(await fileExists(steamcmdExe)) || !(await fileExists(serverExe))) {
+      throw new Error('설치된 서버 파일을 찾지 못했습니다. 서버 자동 설정을 다시 진행해 주세요.');
+    }
+
+    await this.stopForUpdate(config, onProgress);
+    onProgress('팰월드 전용 서버를 최신 버전으로 업데이트하는 중입니다.');
+    await runSteamCmd(steamcmdExe, [
+      '+force_install_dir', config.serverDir,
+      '+login', 'anonymous',
+      '+app_update', PALWORLD_APP_ID, 'validate',
+      '+quit',
+    ], onProgress);
+    await installPalDefender(downloadDir, win64Dir, onProgress);
+    onProgress('업데이트된 팰월드 서버를 시작하는 중입니다.');
+    this.serverProcess = this.spawnServer(serverExe, config.serverDir, onProgress);
+    await waitForPalDefender(config, 90_000);
+  }
+
   stop(): void {
     if (this.serverProcess && !this.serverProcess.killed) this.serverProcess.kill();
     this.serverProcess = null;
+  }
+
+  private async stopForUpdate(config: PalDefenderConfig, onProgress: ProgressHandler): Promise<void> {
+    if (this.serverProcess && !this.serverProcess.killed) {
+      const running = this.serverProcess;
+      this.serverProcess = null;
+      onProgress('업데이트를 위해 실행 중인 팰월드 서버를 종료합니다.');
+      await stopProcessTree(running);
+      await waitForPalDefenderDown(config, 20_000);
+      return;
+    }
+
+    const client = new PalDefenderClient(config);
+    try {
+      await client.getVersion();
+    } catch {
+      await runProcess('taskkill.exe', ['/IM', 'PalServer.exe', '/T', '/F']).catch(() => undefined);
+      await delay(1_000);
+      return;
+    }
+    onProgress('업데이트를 위해 실행 중인 팰월드 서버를 종료합니다.');
+    await client.sendRcon('Shutdown 1 Server_Update').catch(() => undefined);
+    try {
+      await waitForPalDefenderDown(config, 20_000);
+    } catch {
+      await runProcess('taskkill.exe', ['/IM', 'PalServer.exe', '/T', '/F']).catch(() => undefined);
+      await waitForPalDefenderDown(config, 10_000);
+    }
   }
 
   private spawnServer(serverExe: string, serverDir: string, onProgress: ProgressHandler): ChildProcessWithoutNullStreams {
@@ -151,6 +200,15 @@ export class PalworldServerManager {
     });
     return child;
   }
+}
+
+async function installPalDefender(downloadDir: string, win64Dir: string, onProgress: ProgressHandler): Promise<void> {
+  onProgress(`PalDefender ${PALDEFENDER_VERSION}을 검증하고 설치하는 중입니다.`);
+  const palDefenderZip = path.join(downloadDir, `PalDefender-${PALDEFENDER_VERSION}.zip`);
+  await downloadFile(PALDEFENDER_URL, palDefenderZip);
+  await assertSha256(palDefenderZip, PALDEFENDER_SHA256);
+  await fs.mkdir(win64Dir, { recursive: true });
+  await extract(palDefenderZip, { dir: win64Dir });
 }
 
 async function configurePalworld(serverDir: string, rconPassword: string): Promise<void> {
@@ -279,6 +337,20 @@ async function waitForPalDefender(config: PalDefenderConfig, timeoutMs: number):
     }
   }
   throw new Error('팰월드 서버 연결 대기 시간이 초과됐습니다.');
+}
+
+async function waitForPalDefenderDown(config: PalDefenderConfig, timeoutMs: number): Promise<void> {
+  const client = new PalDefenderClient(config);
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      await client.getVersion();
+      await delay(1_000);
+    } catch {
+      return;
+    }
+  }
+  throw new Error('실행 중인 팰월드 서버가 종료되지 않았습니다.');
 }
 
 async function stopProcessTree(child: ChildProcessWithoutNullStreams): Promise<void> {
