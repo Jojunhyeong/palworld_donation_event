@@ -13,7 +13,6 @@
 - AES-GCM 암호화 및 1회 수령 후 삭제되는 인증 티켓
 - 운영체제 보안 저장소를 이용한 사용자 토큰 암호화
 - Windows 사용자 폴더에 SteamCMD·팰월드 전용 서버 자동 설치
-- 사용자가 입력한 월드 이름을 전용 서버 이름으로 저장·변경
 - SHA-256 검증 후 PalDefender 자동 설치 및 localhost 전용 REST/RCON 설정
 - 운영체제 보안 저장소를 이용한 PalDefender·RCON 토큰 암호화
 - 접속 중인 스트리머 캐릭터 자동 선택

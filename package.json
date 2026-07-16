@@ -1,6 +1,6 @@
 {
   "name": "chzzk-donation",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "type": "commonjs",
   "main": "dist/electron/main.js",

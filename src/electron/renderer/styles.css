@@ -60,10 +60,9 @@ input:focus, select:focus { border-color: #00c967; box-shadow: 0 0 0 3px rgba(0,
 .activity-item.donation { border-color: #f5bd55; background: rgba(245, 189, 85, .06); }
 .activity-item.effect { border-color: #b781ff; background: rgba(183, 129, 255, .06); }
 .palworld-settings-card { margin-bottom: 18px; padding: 24px; }
-.server-setup { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(220px, 300px) auto; align-items: end; gap: 20px; }
+.server-setup { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .server-setup strong { font-size: 14px; }
 .server-setup p { max-width: 700px; margin: 6px 0 0; color: #7f8c9f; font-size: 12px; line-height: 1.55; }
-.world-name-field { min-width: 0; }
 .palworld-form { grid-template-columns: 1.1fr 1fr 1fr auto; align-items: end; }
 .toggle-label { grid-template-columns: auto auto; align-items: center; justify-content: start; column-gap: 8px; }
 .toggle-label input { width: 17px; height: 17px; accent-color: #00e676; }
@@ -75,4 +74,4 @@ input:focus, select:focus { border-color: #00c967; box-shadow: 0 0 0 3px rgba(0,
 .rules strong { color: #f5bd55; font-size: 14px; }
 .rules span { color: #9da9b8; font-size: 11px; line-height: 1.4; }
 .rules em { position: absolute; right: 8px; top: 8px; color: #687587; font-size: 9px; font-style: normal; }
-@media (max-width: 980px) { .content-grid { grid-template-columns: 1fr; } .activity-list { height: 260px; } .rules { grid-template-columns: repeat(3, 1fr); } .palworld-form { grid-template-columns: 1fr 1fr; } .server-setup { grid-template-columns: 1fr 1fr; } .server-copy { grid-column: 1 / -1; } }
+@media (max-width: 980px) { .content-grid { grid-template-columns: 1fr; } .activity-list { height: 260px; } .rules { grid-template-columns: repeat(3, 1fr); } .palworld-form { grid-template-columns: 1fr 1fr; } }

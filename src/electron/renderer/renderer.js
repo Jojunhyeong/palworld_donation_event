@@ -4,7 +4,6 @@ const statusText = document.querySelector('#chzzk-status');
 const globalStatus = document.querySelector('#global-status');
 const activityList = document.querySelector('#activity-list');
 const palworldStatus = document.querySelector('#palworld-status');
-const worldNameInput = document.querySelector('#world-name');
 let isConnected = false;
 
 function setChzzkStatus(status) {
@@ -51,7 +50,6 @@ function addActivity(kind, title, message) {
 async function loadConfig() {
   const config = await api.getConfig();
   if (config.serverInstalled) setPalworldStatus('ready');
-  if (config.serverName) worldNameInput.value = config.serverName;
 }
 
 connectButton.addEventListener('click', async () => {
@@ -80,9 +78,7 @@ document.querySelector('#palworld-setup-button').addEventListener('click', async
   button.disabled = true;
   button.textContent = '설치·설정 중';
   try {
-    const serverName = worldNameInput.value.trim();
-    if (!serverName) throw new Error('월드 이름을 입력해 주세요.');
-    const result = await api.preparePalworld(serverName);
+    const result = await api.preparePalworld();
     addActivity(result.ok ? 'success' : 'error', '팰월드 서버 준비', result.message);
   } catch (error) {
     addActivity('error', '팰월드 서버 준비', error.message ?? String(error));

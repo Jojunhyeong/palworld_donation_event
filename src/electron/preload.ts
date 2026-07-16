@@ -5,7 +5,7 @@ contextBridge.exposeInMainWorld('desktopApi', {
   connectChzzk: () => ipcRenderer.invoke('chzzk:connect'),
   disconnectChzzk: () => ipcRenderer.invoke('chzzk:disconnect'),
   testPalworld: () => ipcRenderer.invoke('palworld:test'),
-  preparePalworld: (serverName: string) => ipcRenderer.invoke('palworld:prepare', serverName),
+  preparePalworld: () => ipcRenderer.invoke('palworld:prepare'),
   testEffect: (amount: number) => ipcRenderer.invoke('effect:test', amount),
   onEvent: (callback: (event: unknown) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, payload: unknown) => callback(payload);
