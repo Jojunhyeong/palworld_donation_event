@@ -217,7 +217,7 @@ local function execute_command(fields)
             if utility == nil or not utility:IsValid() then error("utility_not_found") end
             local inventory = utility:GetLocalInventoryData(player)
             if inventory == nil or not inventory:IsValid() then error("inventory_not_found") end
-            inventory:AddItem_ServerInternal(FName(item_id), count, false, 0, false)
+            inventory:AddItem_ServerInternal(FName(item_id), count, false, 0, true)
         end)
         if ok then
             write_file(RESULT_PATH, id .. "|ok|done")
