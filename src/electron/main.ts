@@ -7,7 +7,7 @@ import { getSafeErrorMessage } from '../chzzk/api-error';
 import { SecureConfigStore } from './secure-config';
 import { PalDefenderClient } from '../palworld/paldefender-client';
 import { executeDonationEffect } from '../palworld/effect-executor';
-import { PalworldServerManager } from '../palworld/server-manager';
+import { normalizeServerName, PalworldServerManager } from '../palworld/server-manager';
 import { resolveDonationEffect } from '../donation/effect-engine';
 import { AUTH_SERVICE_URL } from '../config/product';
 
@@ -99,21 +99,27 @@ function registerIpc(): void {
     return emitEffect(amount, '테스트');
   });
 
-  ipcMain.handle('palworld:prepare', async (event) => {
+  ipcMain.handle('palworld:prepare', async (event, serverNameInput: string) => {
     assertTrustedSender(event.senderFrame?.url ?? '');
     try {
+      const serverName = normalizeServerName(serverNameInput);
       if (!palworldManager) throw new Error('팰월드 서버 관리자를 시작하지 못했습니다.');
       sendEvent('status', { palworld: 'preparing' });
       const existing = await configStore.getPalDefenderConfig();
       if (existing.token && existing.serverDir) {
-        await palworldManager.ensureStarted(existing, (message) => sendEvent('log', { level: 'info', message }));
+        if (existing.serverName !== serverName) {
+          await palworldManager.updateServerName(existing, serverName, (message) => sendEvent('log', { level: 'info', message }));
+          await configStore.savePalDefenderConfig({ ...existing, serverName });
+        } else {
+          await palworldManager.ensureStarted(existing, (message) => sendEvent('log', { level: 'info', message }));
+        }
         sendEvent('status', { palworld: 'connected' });
-        return { ok: true, message: '설치된 팰월드 서버를 시작하고 연결했습니다.' };
+        return { ok: true, message: `「${serverName}」 서버를 시작하고 연결했습니다.` };
       }
-      const config = await palworldManager.prepare((message) => sendEvent('log', { level: 'info', message }));
+      const config = await palworldManager.prepare(serverName, (message) => sendEvent('log', { level: 'info', message }));
       await configStore.savePalDefenderConfig(config);
       sendEvent('status', { palworld: 'connected' });
-      return { ok: true, message: '팰월드 전용 서버 설치와 연결을 완료했습니다.' };
+      return { ok: true, message: `「${serverName}」 서버 설치와 연결을 완료했습니다.` };
     } catch (error) {
       const message = getSafeErrorMessage(error, '팰월드 서버 자동 설정에 실패했습니다.');
       sendEvent('status', { palworld: 'error' });

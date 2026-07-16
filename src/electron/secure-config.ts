@@ -12,6 +12,7 @@ interface StoredConfig {
   rconPasswordEncrypted?: string;
   rconPort?: number;
   palworldServerDir?: string;
+  palworldServerName?: string;
   palworldPlayerId?: string;
   testMode?: boolean;
 }
@@ -22,6 +23,7 @@ export interface PublicConfig {
   palworldPlayerId: string;
   testMode: boolean;
   serverInstalled: boolean;
+  serverName: string;
 }
 
 export class SecureConfigStore {
@@ -37,6 +39,7 @@ export class SecureConfigStore {
       palworldPlayerId: stored.palworldPlayerId ?? '',
       testMode: stored.testMode ?? true,
       serverInstalled: Boolean(stored.palworldServerDir),
+      serverName: stored.palworldServerName ?? '',
     };
   }
 
@@ -60,6 +63,7 @@ export class SecureConfigStore {
       rconPasswordEncrypted,
       rconPort: input.rconPort ?? current.rconPort,
       palworldServerDir: input.serverDir ?? current.palworldServerDir,
+      palworldServerName: input.serverName ?? current.palworldServerName,
       palworldPlayerId: input.playerId,
       testMode: input.testMode,
     });
@@ -75,6 +79,7 @@ export class SecureConfigStore {
       rconPassword: stored.rconPasswordEncrypted ? this.decrypt(stored.rconPasswordEncrypted) : '',
       rconPort: stored.rconPort ?? 25575,
       serverDir: stored.palworldServerDir ?? '',
+      serverName: stored.palworldServerName ?? '',
     };
   }
 

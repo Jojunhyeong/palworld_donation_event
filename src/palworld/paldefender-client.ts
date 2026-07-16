@@ -9,6 +9,7 @@ export interface PalDefenderConfig {
   rconPassword?: string;
   rconPort?: number;
   serverDir?: string;
+  serverName?: string;
 }
 
 export interface PalDefenderPlayer {

@@ -23,6 +23,7 @@ export interface PalworldServerCredentials {
   rconPassword: string;
   rconPort: number;
   serverDir: string;
+  serverName: string;
 }
 
 type ProgressHandler = (message: string) => void;
@@ -36,7 +37,8 @@ export class PalworldServerManager {
     return process.platform === 'win32';
   }
 
-  async prepare(onProgress: ProgressHandler): Promise<PalworldServerCredentials> {
+  async prepare(serverNameInput: string, onProgress: ProgressHandler): Promise<PalworldServerCredentials> {
+    const serverName = normalizeServerName(serverNameInput);
     if (!this.supported) {
       throw new Error('팰월드 전용 서버 자동 설치는 Windows에서 실행할 수 있습니다.');
     }
@@ -96,7 +98,7 @@ export class PalworldServerManager {
     const rconPassword = randomBytes(30).toString('base64url');
 
     onProgress('로컬 전용 보안 설정을 적용하는 중입니다.');
-    await configurePalworld(serverDir, rconPassword);
+    await configurePalworld(serverDir, rconPassword, serverName);
     await configurePalDefender(palDefenderDir, token);
 
     const config: PalworldServerCredentials = {
@@ -107,6 +109,7 @@ export class PalworldServerManager {
       rconPassword,
       rconPort: RCON_PORT,
       serverDir,
+      serverName,
     };
 
     onProgress('팰월드 서버를 시작하는 중입니다.');
@@ -133,6 +136,22 @@ export class PalworldServerManager {
     await waitForPalDefender(config, 90_000);
   }
 
+  async updateServerName(config: PalDefenderConfig, serverNameInput: string, onProgress: ProgressHandler): Promise<void> {
+    const serverName = normalizeServerName(serverNameInput);
+    if (!this.supported || !config.serverDir || !config.rconPassword) {
+      throw new Error('팰월드 서버 자동 설정을 먼저 완료해 주세요.');
+    }
+    if (this.serverProcess && !this.serverProcess.killed) {
+      const running = this.serverProcess;
+      this.serverProcess = null;
+      onProgress('월드 이름 적용을 위해 서버를 다시 시작합니다.');
+      await stopProcessTree(running);
+      await delay(2_000);
+    }
+    await configurePalworld(config.serverDir, config.rconPassword, serverName);
+    await this.ensureStarted({ ...config, serverName }, onProgress);
+  }
+
   stop(): void {
     if (this.serverProcess && !this.serverProcess.killed) this.serverProcess.kill();
     this.serverProcess = null;
@@ -152,7 +171,7 @@ export class PalworldServerManager {
   }
 }
 
-async function configurePalworld(serverDir: string, rconPassword: string): Promise<void> {
+async function configurePalworld(serverDir: string, rconPassword: string, serverName: string): Promise<void> {
   const defaultPath = path.join(serverDir, 'DefaultPalWorldSettings.ini');
   const configDir = path.join(serverDir, 'Pal', 'Saved', 'Config', 'WindowsServer');
   const settingsPath = path.join(configDir, 'PalWorldSettings.ini');
@@ -163,7 +182,16 @@ async function configurePalworld(serverDir: string, rconPassword: string): Promi
   settings = replaceIniValue(settings, 'AdminPassword', `"${rconPassword}"`);
   settings = replaceIniValue(settings, 'RCONEnabled', 'True');
   settings = replaceIniValue(settings, 'RCONPort', String(RCON_PORT));
+  settings = replaceIniValue(settings, 'ServerName', `"${serverName}"`);
   await fs.writeFile(settingsPath, settings, 'utf8');
+}
+
+export function normalizeServerName(value: string): string {
+  const name = String(value ?? '').trim();
+  if (!name) throw new Error('월드 이름을 입력해 주세요.');
+  if (name.length > 40) throw new Error('월드 이름은 40자 이내로 입력해 주세요.');
+  if (/["\r\n]/.test(name)) throw new Error('월드 이름에 따옴표나 줄바꿈을 사용할 수 없습니다.');
+  return name;
 }
 
 export function replaceIniValue(settings: string, key: string, value: string): string {
