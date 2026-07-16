@@ -30,9 +30,9 @@ export function resolveDonationEffect(value: string | number): DonationEffect | 
       return { amount, kind: 'obstruction', ...picked, implemented: true };
     }
     case 10000:
-      return { amount, kind: 'help_item', label: '도움 아이템 랜덤', detail: '팰 스피어·방어구·무기 중 1개 추첨', implemented: true };
+      return { amount, kind: 'help_item', label: '도움주기 랜덤', detail: '풀피·방어구·무기 중 1개 추첨', implemented: true };
     case 50000:
-      return { amount, kind: 'death', label: '즉사', detail: '스트리머 캐릭터 사망 처리', implemented: false };
+      return { amount, kind: 'death', label: '즉사', detail: '스트리머 캐릭터 사망 처리', implemented: true };
     default:
       return null;
   }

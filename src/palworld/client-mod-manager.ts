@@ -86,6 +86,26 @@ export class PalworldClientModManager {
   }
 
   async giveItem(config: ClientModConfig, itemId: string, count: number): Promise<void> {
+    await this.sendCommand(config, 'give_item', itemId, String(count));
+  }
+
+  async fullHeal(config: ClientModConfig): Promise<void> {
+    await this.sendCommand(config, 'full_heal');
+  }
+
+  async superJump(config: ClientModConfig): Promise<void> {
+    await this.sendCommand(config, 'super_jump');
+  }
+
+  async randomMove(config: ClientModConfig): Promise<void> {
+    await this.sendCommand(config, 'random_move');
+  }
+
+  async killPlayer(config: ClientModConfig): Promise<void> {
+    await this.sendCommand(config, 'kill_player');
+  }
+
+  private async sendCommand(config: ClientModConfig, command: string, ...args: string[]): Promise<void> {
     const operation = async (): Promise<void> => {
       const status = await this.status(config);
       if (!status.installed) throw new Error('일반 초대방 모드를 먼저 설치해 주세요.');
@@ -97,7 +117,8 @@ export class PalworldClientModManager {
       const temporaryPath = path.join(modRoot, 'command.tmp');
       const id = randomUUID();
       await Promise.all([resultPath, commandPath, temporaryPath].map((filePath) => fs.rm(filePath, { force: true })));
-      await fs.writeFile(temporaryPath, `${id}|give_item|${itemId}|${count}`, 'utf8');
+      if ([command, ...args].some((field) => field.includes('|'))) throw new Error('잘못된 팰월드 명령입니다.');
+      await fs.writeFile(temporaryPath, [id, command, ...args].join('|'), 'utf8');
       await fs.rename(temporaryPath, commandPath);
 
       const result = await waitForResult(resultPath, id, 10_000);
@@ -197,27 +218,39 @@ end
 
 local function execute_command(fields)
     local id = fields[1] or "unknown"
-    if fields[2] ~= "give_item" then
-        write_file(RESULT_PATH, id .. "|error|unsupported_command")
-        return
-    end
-
-    local item_id = fields[3]
-    local count = tonumber(fields[4])
-    if item_id == nil or count == nil or count < 1 or count > 9999 then
-        write_file(RESULT_PATH, id .. "|error|invalid_item")
-        return
-    end
+    local command = fields[2]
 
     ExecuteInGameThread(function()
         local ok, err = pcall(function()
             local player = FindFirstOf("PalPlayerCharacter")
             if player == nil or not player:IsValid() then error("player_not_found") end
-            local utility = StaticFindObject("/Script/Pal.Default__PalUtility")
-            if utility == nil or not utility:IsValid() then error("utility_not_found") end
-            local inventory = utility:GetLocalInventoryData(player)
-            if inventory == nil or not inventory:IsValid() then error("inventory_not_found") end
-            inventory:AddItem_ServerInternal(FName(item_id), count, false, 0, true)
+            if command == "give_item" then
+                local item_id = fields[3]
+                local count = tonumber(fields[4])
+                if item_id == nil or count == nil or count < 1 or count > 9999 then error("invalid_item") end
+                local utility = StaticFindObject("/Script/Pal.Default__PalUtility")
+                if utility == nil or not utility:IsValid() then error("utility_not_found") end
+                local inventory = utility:GetLocalInventoryData(player)
+                if inventory == nil or not inventory:IsValid() then error("inventory_not_found") end
+                inventory:AddItem_ServerInternal(FName(item_id), count, false, 0, true)
+            elseif command == "full_heal" then
+                local parameter = player:GetCharacterParameterComponent()
+                if parameter == nil or not parameter:IsValid() then error("parameter_not_found") end
+                parameter:AddHPByRate_ToServer(1.0)
+            elseif command == "super_jump" then
+                player:LaunchCharacter(FVector(0, 0, 1500), false, false)
+            elseif command == "random_move" then
+                local controller = player:GetPalPlayerController()
+                if controller == nil or not controller:IsValid() then error("controller_not_found") end
+                local location = player:K2_GetActorLocation()
+                controller:Debug_Teleport2D(FVector(location.X + math.random(-5000, 5000), location.Y + math.random(-5000, 5000), location.Z))
+            elseif command == "kill_player" then
+                local controller = player:GetPalPlayerController()
+                if controller == nil or not controller:IsValid() then error("controller_not_found") end
+                controller:SelfKillPlayer()
+            else
+                error("unsupported_command")
+            end
         end)
         if ok then
             write_file(RESULT_PATH, id .. "|ok|done")

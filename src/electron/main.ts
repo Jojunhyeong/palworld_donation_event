@@ -6,6 +6,7 @@ import { connectDonationListener } from '../chzzk/donation-listener';
 import { getSafeErrorMessage } from '../chzzk/api-error';
 import { SecureConfigStore } from './secure-config';
 import { PalworldClientModManager } from '../palworld/client-mod-manager';
+import { executeClientDonationEffect } from '../palworld/client-effect-executor';
 import { resolveDonationEffect } from '../donation/effect-engine';
 import { AUTH_SERVICE_URL } from '../config/product';
 
@@ -114,10 +115,9 @@ async function emitEffect(amount: string | number, source: string): Promise<{ ok
   if (!effect) return { ok: false, message: '해당 금액에 등록된 효과가 없습니다.' };
   try {
     if (!palworldManager) throw new Error('팰월드 모드 관리자를 시작하지 못했습니다.');
-    if (effect.kind !== 'meat') throw new Error('일반 초대방 시험판은 현재 1,000원 효과만 사용할 수 있습니다.');
     const config = await configStore.getClientModConfig();
-    await palworldManager.giveItem(config, 'Meat_ChickenPal', 5);
-    sendEvent('effect', { ...effect, detail: '방장에게 닭고기 5개를 지급했습니다.', source, mode: 'live' });
+    const detail = await executeClientDonationEffect(effect, palworldManager, config);
+    sendEvent('effect', { ...effect, detail, source, mode: 'live' });
     return { ok: true };
   } catch (error) {
     const message = getSafeErrorMessage(error, '팰월드 효과 실행에 실패했습니다.');
