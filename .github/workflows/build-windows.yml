@@ -56,4 +56,4 @@ jobs:
           if (-not $installer) { throw "Windows installer was not found." }
           $releaseFile = Join-Path $env:RUNNER_TEMP "PalDonationBridge-Setup.exe"
           Copy-Item $installer.FullName $releaseFile
-          gh release create $env:GITHUB_REF_NAME $releaseFile --title "팰 후원 브리지 $env:GITHUB_REF_NAME" --notes "Windows 테스트용 설치 파일입니다. PalDonationBridge-Setup.exe 하나만 내려받아 실행하세요." --prerelease
+          gh release create $env:GITHUB_REF_NAME $releaseFile --title "팰 후원 브리지 $env:GITHUB_REF_NAME" --notes "Windows 설치 파일입니다. Assets에서 PalDonationBridge-Setup.exe 하나만 내려받아 실행하세요."
