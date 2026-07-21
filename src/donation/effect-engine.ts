@@ -11,7 +11,7 @@ export interface DonationEffect {
 const OBSTRUCTIONS = [
   { label: '슈퍼 점프', detail: '스트리머를 공중으로 이동' },
   { label: '랜덤 이동', detail: '안전한 랜덤 좌표로 이동' },
-  { label: '가방 쓰레기 채우기', detail: '일반 재료를 랜덤 지급' },
+  { label: '아이템 삭제', detail: '일반 가방의 아이템 한 묶음을 랜덤 삭제' },
 ] as const;
 
 export function resolveDonationEffect(value: string | number): DonationEffect | null {

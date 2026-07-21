@@ -17,21 +17,24 @@ const RARE_ITEMS = [
 
 type HelpEffect =
   | { kind: 'heal'; detail: string }
-  | { kind: 'items'; items: Array<{ id: string; count: number }>; detail: string };
+  | { kind: 'items'; items: Array<{ id: string; count: number }>; detail: string }
+  | { kind: 'weapon' };
 
-const HELP_EFFECTS: readonly HelpEffect[] = [
-  { kind: 'heal', detail: '방장의 체력을 모두 회복했습니다.' },
-  { kind: 'items', items: [{ id: 'Shield_03', count: 1 }], detail: '고급 방어구를 지급했습니다.' },
+const HELP_WEAPONS = [
   {
-    kind: 'items',
     items: [{ id: 'HandGun_Default_3', count: 1 }, { id: 'HandgunBullet', count: 100 }],
     detail: '권총과 탄약 100발을 지급했습니다.',
   },
   {
-    kind: 'items',
     items: [{ id: 'AssaultRifle_Default3', count: 1 }, { id: 'AssaultRifleBullet', count: 200 }],
     detail: '돌격소총과 탄약 200발을 지급했습니다.',
   },
+] as const;
+
+const HELP_EFFECTS: readonly HelpEffect[] = [
+  { kind: 'heal', detail: '방장의 체력을 모두 회복했습니다.' },
+  { kind: 'items', items: [{ id: 'Shield_03', count: 1 }], detail: '고급 방어구를 지급했습니다.' },
+  { kind: 'weapon' },
 ];
 
 export async function executeClientDonationEffect(
@@ -76,9 +79,8 @@ async function executeObstruction(
     await manager.randomMove(config);
     return '방장 캐릭터를 주변의 무작위 위치로 이동했습니다.';
   }
-  const item = pick(COMMON_ITEMS);
-  await manager.giveItem(config, item.id, 100);
-  return `${item.name} 100개로 가방을 방해했습니다.`;
+  await manager.deleteRandomItem(config);
+  return '일반 가방에서 아이템 한 묶음을 무작위로 삭제했습니다.';
 }
 
 async function executeHelp(manager: PalworldClientModManager, config: ClientModConfig): Promise<string> {
@@ -86,6 +88,11 @@ async function executeHelp(manager: PalworldClientModManager, config: ClientModC
   if (effect.kind === 'heal') {
     await manager.fullHeal(config);
     return effect.detail;
+  }
+  if (effect.kind === 'weapon') {
+    const weapon = pick(HELP_WEAPONS);
+    for (const item of weapon.items) await manager.giveItem(config, item.id, item.count);
+    return weapon.detail;
   }
   for (const item of effect.items) await manager.giveItem(config, item.id, item.count);
   return effect.detail;

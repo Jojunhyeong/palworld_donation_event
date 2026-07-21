@@ -101,6 +101,10 @@ export class PalworldClientModManager {
     await this.sendCommand(config, 'random_move');
   }
 
+  async deleteRandomItem(config: ClientModConfig): Promise<void> {
+    await this.sendCommand(config, 'delete_random_item');
+  }
+
   async killPlayer(config: ClientModConfig): Promise<void> {
     await this.sendCommand(config, 'kill_player');
   }
@@ -244,6 +248,30 @@ local function execute_command(fields)
                 if controller == nil or not controller:IsValid() then error("controller_not_found") end
                 local location = player:K2_GetActorLocation()
                 controller:Debug_Teleport2D(FVector(location.X + math.random(-5000, 5000), location.Y + math.random(-5000, 5000), location.Z))
+            elseif command == "delete_random_item" then
+                local utility = StaticFindObject("/Script/Pal.Default__PalUtility")
+                if utility == nil or not utility:IsValid() then error("utility_not_found") end
+                local inventory = utility:GetLocalInventoryData(player)
+                if inventory == nil or not inventory:IsValid() then error("inventory_not_found") end
+                local container_manager = utility:GetItemContainerManager(player)
+                if container_manager == nil or not container_manager:IsValid() then error("container_manager_not_found") end
+                local container = container_manager:GetContainer(inventory.inventoryInfo.CommonContainerId)
+                if container == nil or not container:IsValid() then error("common_container_not_found") end
+                local candidates = {}
+                for index = 0, container:Num() - 1 do
+                    local slot = container:Get(index)
+                    if slot ~= nil and slot:IsValid() and not slot:IsEmpty() then
+                        local item_id = slot:GetItemId()
+                        local count = slot:GetStackCount()
+                        if count > 0 then table.insert(candidates, { id = item_id.StaticId, count = count }) end
+                    end
+                end
+                if #candidates == 0 then error("inventory_empty") end
+                local selected = candidates[math.random(#candidates)]
+                local incident = StaticFindObject("/Script/Pal.Default__PalIncidentBase")
+                if incident == nil or not incident:IsValid() then error("incident_utility_not_found") end
+                local removed = incident:RequestConsumeInventoryItem(inventory, selected.id, selected.count)
+                if removed == nil or removed < 1 then error("item_delete_failed") end
             elseif command == "kill_player" then
                 local controller = player:GetPalPlayerController()
                 if controller == nil or not controller:IsValid() then error("controller_not_found") end
