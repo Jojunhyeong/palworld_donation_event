@@ -17,7 +17,7 @@ const MOD_NAME = 'PalDonationBridge';
 // Increase this whenever the app-to-Lua command format changes. In particular,
 // older scripts do not understand the player-name argument and silently apply
 // effects to the host, so accepting an unversioned heartbeat is unsafe.
-const MOD_PROTOCOL_VERSION = 'party-target-v1';
+const MOD_PROTOCOL_VERSION = 'party-target-v2';
 
 type ProgressHandler = (message: string) => void;
 
@@ -84,11 +84,11 @@ export class PalworldClientModManager {
     const installed = await fileExists(path.join(modRoot, 'Scripts', 'main.lua'));
     const heartbeatPath = path.join(modRoot, 'heartbeat.txt');
     const heartbeat = await modifiedAt(heartbeatPath);
-    const heartbeatValue = await readText(heartbeatPath);
+    const runtimeVersion = await readText(path.join(modRoot, 'runtime-version.txt'));
     return {
       installed,
       gameRunning: installed && Date.now() - heartbeat < 5_000,
-      compatible: heartbeatValue.startsWith(`${MOD_PROTOCOL_VERSION}|`),
+      compatible: runtimeVersion.trim() === MOD_PROTOCOL_VERSION,
       gameWin64Dir,
     };
   }
@@ -216,7 +216,11 @@ async function enableMod(gameWin64Dir: string): Promise<void> {
 }
 
 async function clearBridgeFiles(modRoot: string): Promise<void> {
-  await Promise.all(['command.txt', 'command.tmp', 'result.txt', 'heartbeat.txt'].map((name) => fs.rm(path.join(modRoot, name), { force: true })));
+  await Promise.all(
+    ['command.txt', 'command.tmp', 'result.txt', 'heartbeat.txt', 'runtime-version.txt'].map((name) =>
+      fs.rm(path.join(modRoot, name), { force: true }),
+    ),
+  );
 }
 
 function createLuaMod(modRoot: string): string {
@@ -226,6 +230,7 @@ local PROTOCOL_VERSION = [[${MOD_PROTOCOL_VERSION}]]
 local COMMAND_PATH = ROOT .. "/command.txt"
 local RESULT_PATH = ROOT .. "/result.txt"
 local HEARTBEAT_PATH = ROOT .. "/heartbeat.txt"
+local VERSION_PATH = ROOT .. "/runtime-version.txt"
 
 local function write_file(file_path, contents)
     local file = io.open(file_path, "w")
@@ -234,6 +239,8 @@ local function write_file(file_path, contents)
     file:close()
     return true
 end
+
+write_file(VERSION_PATH, PROTOCOL_VERSION)
 
 local function split(value)
     local fields = {}
@@ -365,7 +372,7 @@ local function execute_command(fields)
 end
 
 LoopAsync(250, function()
-    write_file(HEARTBEAT_PATH, PROTOCOL_VERSION .. "|" .. tostring(os.time()))
+    write_file(HEARTBEAT_PATH, tostring(os.time()))
     local file = io.open(COMMAND_PATH, "r")
     if file ~= nil then
         local command = file:read("*a")
