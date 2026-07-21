@@ -3,6 +3,20 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { ChzzkAuthTokens } from '../types';
 
+export type AppMode = 'personal' | 'party-host';
+
+export interface PartyMemberCredentials extends ChzzkAuthTokens {
+  memberId: string;
+  playerName: string;
+}
+
+interface StoredPartyMember {
+  memberId: string;
+  playerName: string;
+  accessTokenEncrypted: string;
+  refreshTokenEncrypted?: string;
+}
+
 interface StoredConfig {
   accessTokenEncrypted?: string;
   refreshTokenEncrypted?: string;
@@ -14,10 +28,14 @@ interface StoredConfig {
   palworldPlayerId?: string;
   testMode?: boolean;
   palworldGameWin64Dir?: string;
+  appMode?: AppMode;
+  partyMembers?: StoredPartyMember[];
 }
 
 export interface PublicConfig {
   clientModInstalled: boolean;
+  appMode: AppMode;
+  partyMembers: Array<{ memberId: string; playerName: string }>;
 }
 
 export class SecureConfigStore {
@@ -29,7 +47,44 @@ export class SecureConfigStore {
     const stored = await this.read();
     return {
       clientModInstalled: Boolean(stored.palworldGameWin64Dir),
+      appMode: stored.appMode ?? 'personal',
+      partyMembers: (stored.partyMembers ?? []).map(({ memberId, playerName }) => ({ memberId, playerName })),
     };
+  }
+
+  async saveAppMode(appMode: AppMode): Promise<void> {
+    const current = await this.read();
+    await this.write({ ...current, appMode });
+  }
+
+  async getPartyMembers(): Promise<PartyMemberCredentials[]> {
+    const stored = await this.read();
+    return (stored.partyMembers ?? []).map((member) => ({
+      memberId: member.memberId,
+      playerName: member.playerName,
+      accessToken: this.decrypt(member.accessTokenEncrypted),
+      refreshToken: member.refreshTokenEncrypted ? this.decrypt(member.refreshTokenEncrypted) : undefined,
+    }));
+  }
+
+  async savePartyMember(member: PartyMemberCredentials): Promise<void> {
+    const current = await this.read();
+    const next = (current.partyMembers ?? []).filter((stored) => stored.playerName !== member.playerName);
+    next.push({
+      memberId: member.memberId,
+      playerName: member.playerName,
+      accessTokenEncrypted: this.encrypt(member.accessToken),
+      refreshTokenEncrypted: member.refreshToken ? this.encrypt(member.refreshToken) : undefined,
+    });
+    await this.write({ ...current, partyMembers: next });
+  }
+
+  async removePartyMember(memberId: string): Promise<void> {
+    const current = await this.read();
+    await this.write({
+      ...current,
+      partyMembers: (current.partyMembers ?? []).filter((member) => member.memberId !== memberId),
+    });
   }
 
   async saveClientModConfig(gameWin64Dir: string): Promise<void> {

@@ -18,6 +18,37 @@
         <div id="global-status" class="status-pill offline"><span></span>연결 안 됨</div>
       </header>
 
+      <section class="card mode-card">
+        <div class="section-title"><div><p class="label">운영 방식</p><h2>개인 모드와 파티 방장 모드</h2></div><span id="mode-badge" class="badge saved">개인 모드</span></div>
+        <div class="mode-options">
+          <button class="mode-option active" data-mode="personal"><strong>개인 모드</strong><span>기존 방식 그대로, 이 PC 방송인의 후원만 자기 캐릭터에 적용</span></button>
+          <button class="mode-option" data-mode="party-host"><strong>파티 방장 모드</strong><span>대표 PC가 친구 방송인의 후원까지 받아 각 캐릭터에 적용</span></button>
+        </div>
+      </section>
+
+      <section id="party-panel" class="card party-card hidden">
+        <div class="section-title"><div><p class="label">무료 로컬 중앙 서버</p><h2>방송 파티 관리</h2></div><span id="party-status-badge" class="badge waiting">중지됨</span></div>
+        <div class="party-toolbar">
+          <div><strong>대표 방송인의 PC에서 모든 참여 방송을 수신합니다.</strong><p>친구는 프로그램 설치 없이 참여 링크에서 치지직 로그인과 팰월드 캐릭터 이름 입력만 하면 됩니다.</p></div>
+          <button id="party-toggle-button" class="primary">파티 시작</button>
+        </div>
+        <div id="party-link-box" class="party-link-box hidden">
+          <label>참여 코드<input id="party-code" readonly></label>
+          <label class="party-link-label">친구에게 보낼 참여 링크<input id="party-join-url" readonly></label>
+          <button id="copy-party-link" class="secondary">링크 복사</button>
+        </div>
+        <div class="party-columns">
+          <div>
+            <div class="mini-heading"><strong>연결된 방송인</strong><span>캐릭터 이름 기준</span></div>
+            <div id="party-member-list" class="member-list"><p class="empty-inline">아직 연결된 친구가 없습니다.</p></div>
+          </div>
+          <div>
+            <div class="mini-heading"><strong>현재 팰월드 접속자</strong><button id="refresh-player-list" class="text-button">새로고침</button></div>
+            <div id="palworld-player-list" class="player-list"><p class="empty-inline">팰월드 월드에 들어간 뒤 새로고침하세요.</p></div>
+          </div>
+        </div>
+      </section>
+
       <section class="grid status-grid">
         <article class="card status-card">
           <div class="card-heading">
@@ -54,9 +85,9 @@
       </section>
 
       <section class="card palworld-settings-card">
-        <div class="section-title"><div><p class="label">자동 준비</p><h2>일반 초대방 방장 모드</h2></div><span class="badge waiting">방장 PC에만 설치</span></div>
+        <div class="section-title"><div><p class="label">자동 준비</p><h2>일반 초대방 팰월드 모드</h2></div><span class="badge waiting">효과 실행 PC에 설치</span></div>
         <div class="server-setup">
-          <div><strong>IP나 포트포워딩 없이 평소 초대 코드를 사용합니다.</strong><p>Steam의 팰월드를 자동으로 찾아 방장용 모드를 설치합니다. 친구들은 별도 설치 없이 초대 코드로 참가합니다.</p></div>
+          <div><strong>IP나 포트포워딩 없이 평소 초대 코드를 사용합니다.</strong><p>파티 방장 모드는 대표 PC에만 설치합니다. 개인 모드는 방송인 각자의 PC에 설치하며 언제든 기존 방식으로 돌아갈 수 있습니다.</p></div>
           <button id="palworld-setup-button" class="secondary">방장 모드 설치</button>
         </div>
       </section>

@@ -1,19 +1,21 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, clipboard, ipcMain, shell } from 'electron';
 import path from 'path';
 import { authorizeWithRemoteService } from '../chzzk/remote-auth';
 import { createChzzkSession } from '../chzzk/session';
 import { connectDonationListener } from '../chzzk/donation-listener';
 import { getSafeErrorMessage } from '../chzzk/api-error';
-import { SecureConfigStore } from './secure-config';
+import { AppMode, PartyMemberCredentials, SecureConfigStore } from './secure-config';
 import { PalworldClientModManager } from '../palworld/client-mod-manager';
 import { executeClientDonationEffect } from '../palworld/client-effect-executor';
 import { resolveDonationEffect } from '../donation/effect-engine';
 import { AUTH_SERVICE_URL } from '../config/product';
+import { LocalPartyHub } from '../chzzk/party-hub';
 
 let mainWindow: BrowserWindow | null = null;
 let socket: SocketIOClient.Socket | null = null;
 const configStore = new SecureConfigStore();
 let palworldManager: PalworldClientModManager | null = null;
+let partyHub: LocalPartyHub | null = null;
 
 function sendEvent(type: string, payload: unknown): void {
   mainWindow?.webContents.send('app:event', { type, payload });
@@ -29,6 +31,68 @@ function registerIpc(): void {
   ipcMain.handle('config:get', async (event) => {
     assertTrustedSender(event.senderFrame?.url ?? '');
     return configStore.getPublicConfig();
+  });
+
+  ipcMain.handle('mode:set', async (event, mode: AppMode) => {
+    assertTrustedSender(event.senderFrame?.url ?? '');
+    if (!['personal', 'party-host'].includes(mode)) throw new Error('지원하지 않는 실행 모드입니다.');
+    if (mode === 'personal') await partyHub?.stop();
+    await configStore.saveAppMode(mode);
+    sendEvent('mode', { mode });
+    return { ok: true };
+  });
+
+  ipcMain.handle('party:start', async (event) => {
+    assertTrustedSender(event.senderFrame?.url ?? '');
+    try {
+      if (!partyHub) throw new Error('파티 중앙 수신기를 시작하지 못했습니다.');
+      await configStore.saveAppMode('party-host');
+      const session = await partyHub.start(await configStore.getPartyMembers());
+      sendEvent('party', { status: 'running', ...session });
+      return { ok: true, ...session };
+    } catch (error) {
+      const message = getSafeErrorMessage(error, '파티를 시작하지 못했습니다.');
+      sendEvent('party', { status: 'error', message });
+      return { ok: false, message };
+    }
+  });
+
+  ipcMain.handle('party:stop', async (event) => {
+    assertTrustedSender(event.senderFrame?.url ?? '');
+    await partyHub?.stop();
+    sendEvent('party', { status: 'stopped' });
+    return { ok: true };
+  });
+
+  ipcMain.handle('party:remove-member', async (event, memberId: string) => {
+    assertTrustedSender(event.senderFrame?.url ?? '');
+    partyHub?.removeMember(memberId);
+    await configStore.removePartyMember(memberId);
+    sendEvent('party-member', { memberId, removed: true });
+    return { ok: true };
+  });
+
+  ipcMain.handle('party:list-players', async (event) => {
+    assertTrustedSender(event.senderFrame?.url ?? '');
+    try {
+      if (!palworldManager) throw new Error('팰월드 모드 관리자를 시작하지 못했습니다.');
+      const players = await palworldManager.listPlayers(await configStore.getClientModConfig());
+      return { ok: true, players };
+    } catch (error) {
+      return { ok: false, message: getSafeErrorMessage(error, '접속자 목록을 읽지 못했습니다.') };
+    }
+  });
+
+  ipcMain.handle('party:test-target', async (event, playerName: string) => {
+    assertTrustedSender(event.senderFrame?.url ?? '');
+    if (!playerName?.trim()) return { ok: false, message: '대상 캐릭터 이름이 없습니다.' };
+    return emitEffect(1_000, '파티 대상 테스트', playerName.trim());
+  });
+
+  ipcMain.handle('clipboard:write', (event, value: string) => {
+    assertTrustedSender(event.senderFrame?.url ?? '');
+    clipboard.writeText(value);
+    return { ok: true };
   });
 
   ipcMain.handle('chzzk:connect', async (event) => {
@@ -110,14 +174,18 @@ function registerIpc(): void {
   });
 }
 
-async function emitEffect(amount: string | number, source: string): Promise<{ ok: boolean; message?: string }> {
+async function emitEffect(
+  amount: string | number,
+  source: string,
+  targetPlayerName?: string,
+): Promise<{ ok: boolean; message?: string }> {
   const effect = resolveDonationEffect(amount);
   if (!effect) return { ok: false, message: '해당 금액에 등록된 효과가 없습니다.' };
   try {
     if (!palworldManager) throw new Error('팰월드 모드 관리자를 시작하지 못했습니다.');
     const config = await configStore.getClientModConfig();
-    const detail = await executeClientDonationEffect(effect, palworldManager, config);
-    sendEvent('effect', { ...effect, detail, source, mode: 'live' });
+    const detail = await executeClientDonationEffect(effect, palworldManager, config, targetPlayerName);
+    sendEvent('effect', { ...effect, detail, source, mode: 'live', targetPlayerName });
     return { ok: true };
   } catch (error) {
     const message = getSafeErrorMessage(error, '팰월드 효과 실행에 실패했습니다.');
@@ -153,6 +221,24 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   palworldManager = new PalworldClientModManager(path.join(app.getPath('userData'), 'client-mod'));
+  partyHub = new LocalPartyHub(AUTH_SERVICE_URL, {
+    onDonation: (member, donation) => {
+      sendEvent('party-donation', { memberId: member.memberId, playerName: member.playerName, donation });
+      void emitEffect(donation.payAmount ?? 0, `${member.playerName} 방송 후원`, member.playerName);
+    },
+    onMemberJoined: async (member: PartyMemberCredentials) => {
+      const replaced = (await configStore.getPartyMembers()).find(
+        (stored) => stored.playerName === member.playerName && stored.memberId !== member.memberId,
+      );
+      await configStore.savePartyMember(member);
+      if (replaced) sendEvent('party-member', { memberId: replaced.memberId, removed: true });
+      sendEvent('party-member', { memberId: member.memberId, playerName: member.playerName, status: 'connecting' });
+    },
+    onMemberStatus: (member, status) => {
+      sendEvent('party-member', { memberId: member.memberId, playerName: member.playerName, status });
+    },
+    onLog: (message) => sendEvent('log', { level: 'info', message }),
+  });
   registerIpc();
   createWindow();
   app.on('activate', () => {
@@ -162,5 +248,6 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   socket?.disconnect();
+  void partyHub?.stop();
   if (process.platform !== 'darwin') app.quit();
 });

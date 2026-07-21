@@ -32,7 +32,7 @@ const HELP_WEAPONS = [
 ] as const;
 
 const HELP_EFFECTS: readonly HelpEffect[] = [
-  { kind: 'heal', detail: '방장의 체력을 모두 회복했습니다.' },
+  { kind: 'heal', detail: '대상 캐릭터의 체력을 모두 회복했습니다.' },
   { kind: 'items', items: [{ id: 'Shield_03', count: 1 }], detail: '고급 방어구를 지급했습니다.' },
   { kind: 'weapon' },
 ];
@@ -41,28 +41,29 @@ export async function executeClientDonationEffect(
   effect: DonationEffect,
   manager: PalworldClientModManager,
   config: ClientModConfig,
+  targetPlayerName?: string,
 ): Promise<string> {
   switch (effect.kind) {
     case 'meat':
-      await manager.giveItem(config, 'Meat_ChickenPal', 5);
-      return '방장에게 닭고기 5개를 지급했습니다.';
+      await manager.giveItem(config, 'Meat_ChickenPal', 5, targetPlayerName);
+      return '대상 캐릭터에게 닭고기 5개를 지급했습니다.';
     case 'common_item': {
       const item = pick(COMMON_ITEMS);
-      await manager.giveItem(config, item.id, 10);
+      await manager.giveItem(config, item.id, 10, targetPlayerName);
       return `${item.name} 10개를 지급했습니다.`;
     }
     case 'rare_item': {
       const item = pick(RARE_ITEMS);
-      await manager.giveItem(config, item.id, 1);
+      await manager.giveItem(config, item.id, 1, targetPlayerName);
       return `${item.name} 1개를 지급했습니다.`;
     }
     case 'obstruction':
-      return executeObstruction(effect, manager, config);
+      return executeObstruction(effect, manager, config, targetPlayerName);
     case 'help_item':
-      return executeHelp(manager, config);
+      return executeHelp(manager, config, targetPlayerName);
     case 'death':
-      await manager.killPlayer(config);
-      return '방장 캐릭터를 사망 처리했습니다.';
+      await manager.killPlayer(config, targetPlayerName);
+      return '대상 캐릭터를 사망 처리했습니다.';
   }
 }
 
@@ -70,31 +71,36 @@ async function executeObstruction(
   effect: DonationEffect,
   manager: PalworldClientModManager,
   config: ClientModConfig,
+  targetPlayerName?: string,
 ): Promise<string> {
   if (effect.label === '슈퍼 점프') {
-    await manager.superJump(config);
-    return '방장 캐릭터를 슈퍼점프시켰습니다.';
+    await manager.superJump(config, targetPlayerName);
+    return '대상 캐릭터를 슈퍼점프시켰습니다.';
   }
   if (effect.label === '랜덤 이동') {
-    await manager.randomMove(config);
-    return '방장 캐릭터를 주변의 무작위 위치로 이동했습니다.';
+    await manager.randomMove(config, targetPlayerName);
+    return '대상 캐릭터를 주변의 무작위 위치로 이동했습니다.';
   }
-  await manager.deleteRandomItem(config);
+  await manager.deleteRandomItem(config, targetPlayerName);
   return '일반 가방에서 아이템 한 묶음을 무작위로 삭제했습니다.';
 }
 
-async function executeHelp(manager: PalworldClientModManager, config: ClientModConfig): Promise<string> {
+async function executeHelp(
+  manager: PalworldClientModManager,
+  config: ClientModConfig,
+  targetPlayerName?: string,
+): Promise<string> {
   const effect = pick(HELP_EFFECTS);
   if (effect.kind === 'heal') {
-    await manager.fullHeal(config);
+    await manager.fullHeal(config, targetPlayerName);
     return effect.detail;
   }
   if (effect.kind === 'weapon') {
     const weapon = pick(HELP_WEAPONS);
-    for (const item of weapon.items) await manager.giveItem(config, item.id, item.count);
+    for (const item of weapon.items) await manager.giveItem(config, item.id, item.count, targetPlayerName);
     return weapon.detail;
   }
-  for (const item of effect.items) await manager.giveItem(config, item.id, item.count);
+  for (const item of effect.items) await manager.giveItem(config, item.id, item.count, targetPlayerName);
   return effect.detail;
 }
 

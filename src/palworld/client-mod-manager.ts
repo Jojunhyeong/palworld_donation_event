@@ -85,32 +85,37 @@ export class PalworldClientModManager {
     };
   }
 
-  async giveItem(config: ClientModConfig, itemId: string, count: number): Promise<void> {
-    await this.sendCommand(config, 'give_item', itemId, String(count));
+  async giveItem(config: ClientModConfig, itemId: string, count: number, targetPlayerName?: string): Promise<void> {
+    await this.sendCommand(config, 'give_item', itemId, String(count), ...optionalTarget(targetPlayerName));
   }
 
-  async fullHeal(config: ClientModConfig): Promise<void> {
-    await this.sendCommand(config, 'full_heal');
+  async fullHeal(config: ClientModConfig, targetPlayerName?: string): Promise<void> {
+    await this.sendCommand(config, 'full_heal', ...optionalTarget(targetPlayerName));
   }
 
-  async superJump(config: ClientModConfig): Promise<void> {
-    await this.sendCommand(config, 'super_jump');
+  async superJump(config: ClientModConfig, targetPlayerName?: string): Promise<void> {
+    await this.sendCommand(config, 'super_jump', ...optionalTarget(targetPlayerName));
   }
 
-  async randomMove(config: ClientModConfig): Promise<void> {
-    await this.sendCommand(config, 'random_move');
+  async randomMove(config: ClientModConfig, targetPlayerName?: string): Promise<void> {
+    await this.sendCommand(config, 'random_move', ...optionalTarget(targetPlayerName));
   }
 
-  async deleteRandomItem(config: ClientModConfig): Promise<void> {
-    await this.sendCommand(config, 'delete_random_item');
+  async deleteRandomItem(config: ClientModConfig, targetPlayerName?: string): Promise<void> {
+    await this.sendCommand(config, 'delete_random_item', ...optionalTarget(targetPlayerName));
   }
 
-  async killPlayer(config: ClientModConfig): Promise<void> {
-    await this.sendCommand(config, 'kill_player');
+  async killPlayer(config: ClientModConfig, targetPlayerName?: string): Promise<void> {
+    await this.sendCommand(config, 'kill_player', ...optionalTarget(targetPlayerName));
   }
 
-  private async sendCommand(config: ClientModConfig, command: string, ...args: string[]): Promise<void> {
-    const operation = async (): Promise<void> => {
+  async listPlayers(config: ClientModConfig): Promise<string[]> {
+    const result = await this.sendCommand(config, 'list_players');
+    return result === 'none' ? [] : result.split('\n').filter(Boolean);
+  }
+
+  private async sendCommand(config: ClientModConfig, command: string, ...args: string[]): Promise<string> {
+    const operation = async (): Promise<string> => {
       const status = await this.status(config);
       if (!status.installed) throw new Error('일반 초대방 모드를 먼저 설치해 주세요.');
       if (!status.gameRunning) throw new Error('팰월드를 실행하고 멀티플레이 월드에 들어가 주세요.');
@@ -127,16 +132,22 @@ export class PalworldClientModManager {
 
       const result = await waitForResult(resultPath, id, 10_000);
       if (!result.ok) throw new Error(`팰월드 모드가 효과를 실행하지 못했습니다: ${result.detail}`);
+      return result.detail;
     };
 
     const queued = this.commandChain.then(operation, operation);
     this.commandChain = queued.catch(() => undefined);
-    await queued;
+    return queued;
   }
 
   private getModRoot(gameWin64Dir: string): string {
     return path.join(gameWin64Dir, 'ue4ss', 'Mods', MOD_NAME);
   }
+}
+
+function optionalTarget(targetPlayerName?: string): string[] {
+  const target = targetPlayerName?.trim();
+  return target ? [target] : [];
 }
 
 async function findPalworldWin64Dir(): Promise<string> {
@@ -220,22 +231,76 @@ local function split(value)
     return fields
 end
 
+local function get_utility()
+    local utility = StaticFindObject("/Script/Pal.Default__PalUtility")
+    if utility == nil or not utility:IsValid() then error("utility_not_found") end
+    return utility
+end
+
+local function get_player_name(player)
+    local state = player:GetPalPlayerState()
+    if state == nil or not state:IsValid() then return nil end
+    return state:GetPlayerName()
+end
+
+local function find_target_player(target_name)
+    if target_name == nil or target_name == "" then
+        local utility = get_utility()
+        local context = FindFirstOf("PalPlayerCharacter")
+        if context == nil or not context:IsValid() then error("player_not_found") end
+        local controller = utility:GetLocalPlayerController(context)
+        if controller == nil or not controller:IsValid() then error("local_controller_not_found") end
+        local player = controller:K2_GetPawn()
+        if player == nil or not player:IsValid() then error("local_player_not_found") end
+        return player
+    end
+
+    local players = FindAllOf("PalPlayerCharacter") or {}
+    for _, player in pairs(players) do
+        if player ~= nil and player:IsValid() and get_player_name(player) == target_name then return player end
+    end
+    error("target_player_not_found:" .. target_name)
+end
+
+local function list_player_names()
+    local names = {}
+    local seen = {}
+    local players = FindAllOf("PalPlayerCharacter") or {}
+    for _, player in pairs(players) do
+        if player ~= nil and player:IsValid() then
+            local name = get_player_name(player)
+            if name ~= nil and name ~= "" and not seen[name] then
+                seen[name] = true
+                table.insert(names, name)
+            end
+        end
+    end
+    table.sort(names)
+    return #names > 0 and table.concat(names, "\n") or "none"
+end
+
+local function get_player_inventory(player)
+    local state = player:GetPalPlayerState()
+    if state == nil or not state:IsValid() then error("player_state_not_found") end
+    local inventory = state:GetInventoryData()
+    if inventory == nil or not inventory:IsValid() then error("inventory_not_found") end
+    return inventory
+end
+
 local function execute_command(fields)
     local id = fields[1] or "unknown"
     local command = fields[2]
 
     ExecuteInGameThread(function()
-        local ok, err = pcall(function()
-            local player = FindFirstOf("PalPlayerCharacter")
-            if player == nil or not player:IsValid() then error("player_not_found") end
+        local ok, result = pcall(function()
+            if command == "list_players" then return list_player_names() end
+            local target_name = command == "give_item" and fields[5] or fields[3]
+            local player = find_target_player(target_name)
             if command == "give_item" then
                 local item_id = fields[3]
                 local count = tonumber(fields[4])
                 if item_id == nil or count == nil or count < 1 or count > 9999 then error("invalid_item") end
-                local utility = StaticFindObject("/Script/Pal.Default__PalUtility")
-                if utility == nil or not utility:IsValid() then error("utility_not_found") end
-                local inventory = utility:GetLocalInventoryData(player)
-                if inventory == nil or not inventory:IsValid() then error("inventory_not_found") end
+                local inventory = get_player_inventory(player)
                 inventory:AddItem_ServerInternal(FName(item_id), count, false, 0, true)
             elseif command == "full_heal" then
                 local parameter = player:GetCharacterParameterComponent()
@@ -249,10 +314,8 @@ local function execute_command(fields)
                 local location = player:K2_GetActorLocation()
                 controller:Debug_Teleport2D(FVector(location.X + math.random(-5000, 5000), location.Y + math.random(-5000, 5000), location.Z))
             elseif command == "delete_random_item" then
-                local utility = StaticFindObject("/Script/Pal.Default__PalUtility")
-                if utility == nil or not utility:IsValid() then error("utility_not_found") end
-                local inventory = utility:GetLocalInventoryData(player)
-                if inventory == nil or not inventory:IsValid() then error("inventory_not_found") end
+                local utility = get_utility()
+                local inventory = get_player_inventory(player)
                 local container_manager = utility:GetItemContainerManager(player)
                 if container_manager == nil or not container_manager:IsValid() then error("container_manager_not_found") end
                 local container = container_manager:GetContainer(inventory.inventoryInfo.CommonContainerId)
@@ -279,11 +342,12 @@ local function execute_command(fields)
             else
                 error("unsupported_command")
             end
+            return "done"
         end)
         if ok then
-            write_file(RESULT_PATH, id .. "|ok|done")
+            write_file(RESULT_PATH, id .. "|ok|" .. tostring(result or "done"))
         else
-            write_file(RESULT_PATH, id .. "|error|" .. tostring(err))
+            write_file(RESULT_PATH, id .. "|error|" .. tostring(result))
         end
     end)
 end
