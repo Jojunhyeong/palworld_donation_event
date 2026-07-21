@@ -14,6 +14,10 @@ const UE4SS_URL = 'https://github.com/Okaetsu/RE-UE4SS/releases/download/experim
 const UE4SS_SHA256 = '768a45718fbb9e429ac5cc3ce4a139a1b7b468bff31b4a136ae483d725aca1ca';
 const INSTALL_MARKER = '.pal-donation-ue4ss-version';
 const MOD_NAME = 'PalDonationBridge';
+// Increase this whenever the app-to-Lua command format changes. In particular,
+// older scripts do not understand the player-name argument and silently apply
+// effects to the host, so accepting an unversioned heartbeat is unsafe.
+const MOD_PROTOCOL_VERSION = 'party-target-v1';
 
 type ProgressHandler = (message: string) => void;
 
@@ -24,6 +28,7 @@ export interface ClientModConfig {
 export interface ClientModStatus {
   installed: boolean;
   gameRunning: boolean;
+  compatible: boolean;
   gameWin64Dir: string;
 }
 
@@ -74,13 +79,16 @@ export class PalworldClientModManager {
 
   async status(config: ClientModConfig): Promise<ClientModStatus> {
     const gameWin64Dir = config.gameWin64Dir || (this.supported ? await findPalworldWin64Dir() : '');
-    if (!gameWin64Dir) return { installed: false, gameRunning: false, gameWin64Dir: '' };
+    if (!gameWin64Dir) return { installed: false, gameRunning: false, compatible: false, gameWin64Dir: '' };
     const modRoot = this.getModRoot(gameWin64Dir);
     const installed = await fileExists(path.join(modRoot, 'Scripts', 'main.lua'));
-    const heartbeat = await modifiedAt(path.join(modRoot, 'heartbeat.txt'));
+    const heartbeatPath = path.join(modRoot, 'heartbeat.txt');
+    const heartbeat = await modifiedAt(heartbeatPath);
+    const heartbeatValue = await readText(heartbeatPath);
     return {
       installed,
       gameRunning: installed && Date.now() - heartbeat < 5_000,
+      compatible: heartbeatValue.startsWith(`${MOD_PROTOCOL_VERSION}|`),
       gameWin64Dir,
     };
   }
@@ -119,6 +127,9 @@ export class PalworldClientModManager {
       const status = await this.status(config);
       if (!status.installed) throw new Error('일반 초대방 모드를 먼저 설치해 주세요.');
       if (!status.gameRunning) throw new Error('팰월드를 실행하고 멀티플레이 월드에 들어가 주세요.');
+      if (!status.compatible) {
+        throw new Error('설치된 방장 모드가 구버전입니다. 팰월드를 종료하고 방장 모드를 다시 설치한 뒤 재실행해 주세요.');
+      }
 
       const modRoot = this.getModRoot(status.gameWin64Dir);
       const commandPath = path.join(modRoot, 'command.txt');
@@ -211,6 +222,7 @@ async function clearBridgeFiles(modRoot: string): Promise<void> {
 function createLuaMod(modRoot: string): string {
   const root = modRoot.replace(/\\/g, '/');
   return `local ROOT = [[${root}]]
+local PROTOCOL_VERSION = [[${MOD_PROTOCOL_VERSION}]]
 local COMMAND_PATH = ROOT .. "/command.txt"
 local RESULT_PATH = ROOT .. "/result.txt"
 local HEARTBEAT_PATH = ROOT .. "/heartbeat.txt"
@@ -353,7 +365,7 @@ local function execute_command(fields)
 end
 
 LoopAsync(250, function()
-    write_file(HEARTBEAT_PATH, tostring(os.time()))
+    write_file(HEARTBEAT_PATH, PROTOCOL_VERSION .. "|" .. tostring(os.time()))
     local file = io.open(COMMAND_PATH, "r")
     if file ~= nil then
         local command = file:read("*a")

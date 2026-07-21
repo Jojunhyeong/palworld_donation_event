@@ -143,6 +143,9 @@ function registerIpc(): void {
       const status = await palworldManager.status(config);
       if (!status.installed) throw new Error('일반 초대방 모드를 먼저 설치해 주세요.');
       if (!status.gameRunning) throw new Error('팰월드를 실행하고 멀티플레이 월드에 들어가 주세요.');
+      if (!status.compatible) {
+        throw new Error('설치된 방장 모드가 구버전입니다. 팰월드를 종료하고 방장 모드를 다시 설치한 뒤 재실행해 주세요.');
+      }
       sendEvent('status', { palworld: 'connected' });
       return { ok: true };
     } catch (error) {
