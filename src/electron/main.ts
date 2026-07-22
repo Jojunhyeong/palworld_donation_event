@@ -1,9 +1,9 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import path from 'path';
-import { authorizeWithRemoteService } from '../chzzk/remote-auth';
-import { createChzzkSession } from '../chzzk/session';
-import { connectDonationListener } from '../chzzk/donation-listener';
-import { getSafeErrorMessage } from '../chzzk/api-error';
+import { authorizeWithRemoteService } from '../cime/remote-auth';
+import { createCimeSession } from '../cime/session';
+import { CimeDonationConnection, connectDonationListener } from '../cime/donation-listener';
+import { getSafeErrorMessage } from '../cime/api-error';
 import { SecureConfigStore } from './secure-config';
 import { PalworldClientModManager } from '../palworld/client-mod-manager';
 import { executeClientDonationEffect } from '../palworld/client-effect-executor';
@@ -11,7 +11,7 @@ import { resolveDonationEffect } from '../donation/effect-engine';
 import { AUTH_SERVICE_URL } from '../config/product';
 
 let mainWindow: BrowserWindow | null = null;
-let socket: SocketIOClient.Socket | null = null;
+let socket: CimeDonationConnection | null = null;
 const configStore = new SecureConfigStore();
 let palworldManager: PalworldClientModManager | null = null;
 
@@ -31,25 +31,24 @@ function registerIpc(): void {
     return configStore.getPublicConfig();
   });
 
-  ipcMain.handle('chzzk:connect', async (event) => {
+  ipcMain.handle('cime:connect', async (event) => {
     assertTrustedSender(event.senderFrame?.url ?? '');
     socket?.disconnect();
     socket = null;
 
     try {
-      sendEvent('status', { chzzk: 'authorizing' });
+      sendEvent('status', { cime: 'authorizing' });
       const tokens = await authorizeWithRemoteService(AUTH_SERVICE_URL, async (url) => {
         await shell.openExternal(url);
       });
       await configStore.saveTokens(tokens);
 
-      sendEvent('status', { chzzk: 'connecting' });
-      const sessionUrl = await createChzzkSession(tokens.accessToken);
+      sendEvent('status', { cime: 'connecting' });
+      const sessionUrl = await createCimeSession(tokens.accessToken);
       socket = connectDonationListener(sessionUrl, tokens.accessToken, {
-        onStatus: (status) => sendEvent('status', { chzzk: status }),
+        onStatus: (status) => sendEvent('status', { cime: status }),
         onLog: (message) => sendEvent('log', { level: 'info', message }),
         onError: (message) => sendEvent('log', { level: 'error', message }),
-        onChat: (chat) => sendEvent('chat', chat),
         onDonation: (donation) => {
           sendEvent('donation', donation);
           void emitEffect(donation.payAmount ?? 0, '후원');
@@ -57,18 +56,18 @@ function registerIpc(): void {
       });
       return { ok: true };
     } catch (error) {
-      const message = getSafeErrorMessage(error, '치지직 연결에 실패했습니다.');
-      sendEvent('status', { chzzk: 'error' });
+      const message = getSafeErrorMessage(error, '씨미 연결에 실패했습니다.');
+      sendEvent('status', { cime: 'error' });
       sendEvent('log', { level: 'error', message });
       return { ok: false, message };
     }
   });
 
-  ipcMain.handle('chzzk:disconnect', (event) => {
+  ipcMain.handle('cime:disconnect', (event) => {
     assertTrustedSender(event.senderFrame?.url ?? '');
     socket?.disconnect();
     socket = null;
-    sendEvent('status', { chzzk: 'disconnected' });
+    sendEvent('status', { cime: 'disconnected' });
   });
 
   ipcMain.handle('palworld:test', async (event) => {
@@ -133,7 +132,7 @@ function createWindow(): void {
     minWidth: 900,
     minHeight: 650,
     backgroundColor: '#0d1117',
-    title: '팰 후원 브리지',
+    title: '씨미 팰 후원 브리지',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

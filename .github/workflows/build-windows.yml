@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     tags:
-      - 'v*'
+      - 'cime-v*'
 
 jobs:
   build:
@@ -31,7 +31,7 @@ jobs:
       - name: Verify secrets are excluded
         shell: pwsh
         run: |
-          $asar = "out/PalDonationBridge-win32-x64/resources/app.asar"
+          $asar = "out/CimePalDonationBridge-win32-x64/resources/app.asar"
           if (-not (Test-Path $asar)) { throw "Packaged app.asar was not found." }
           $blocked = npx asar list $asar | Select-String '^/(\.env(?:\..*)?|worker(?:/|$)|docs(?:/|$)|\.github(?:/|$))'
           if ($blocked) { throw "Sensitive development files were included in app.asar: $blocked" }
@@ -39,7 +39,7 @@ jobs:
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
-          name: PalDonationBridge-Windows
+          name: CimePalDonationBridge-Windows
           path: |
             out/make/squirrel.windows/x64/*.exe
             out/make/squirrel.windows/x64/*.nupkg
@@ -54,6 +54,6 @@ jobs:
         run: |
           $installer = Get-ChildItem "out/make/squirrel.windows/x64/*.exe" | Select-Object -First 1
           if (-not $installer) { throw "Windows installer was not found." }
-          $releaseFile = Join-Path $env:RUNNER_TEMP "PalDonationBridge-Setup.exe"
+          $releaseFile = Join-Path $env:RUNNER_TEMP "CimePalDonationBridge-Setup.exe"
           Copy-Item $installer.FullName $releaseFile
-          gh release create $env:GITHUB_REF_NAME $releaseFile --title "팰 후원 브리지 $env:GITHUB_REF_NAME" --notes "Windows 테스트용 설치 파일입니다. PalDonationBridge-Setup.exe 하나만 내려받아 실행하세요." --prerelease
+          gh release create $env:GITHUB_REF_NAME $releaseFile --title "씨미 팰 후원 브리지 $env:GITHUB_REF_NAME" --notes "Windows 테스트용 설치 파일입니다. CimePalDonationBridge-Setup.exe 하나만 내려받아 실행하세요." --prerelease

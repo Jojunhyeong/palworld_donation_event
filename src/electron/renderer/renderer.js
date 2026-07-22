@@ -1,12 +1,12 @@
 const api = window.desktopApi;
 const connectButton = document.querySelector('#connect-button');
-const statusText = document.querySelector('#chzzk-status');
+const statusText = document.querySelector('#cime-status');
 const globalStatus = document.querySelector('#global-status');
 const activityList = document.querySelector('#activity-list');
 const palworldStatus = document.querySelector('#palworld-status');
 let isConnected = false;
 
-function setChzzkStatus(status) {
+function setCimeStatus(status) {
   const labels = {
     authorizing: '브라우저 인증 중',
     connecting: '세션 연결 중',
@@ -16,10 +16,10 @@ function setChzzkStatus(status) {
   };
   statusText.textContent = labels[status] ?? status;
   isConnected = status === 'connected';
-  connectButton.textContent = isConnected ? '연결 끊기' : '치지직 연결';
+  connectButton.textContent = isConnected ? '연결 끊기' : '씨미 연결';
   connectButton.disabled = ['authorizing', 'connecting'].includes(status);
   globalStatus.className = `status-pill ${isConnected ? 'online' : 'offline'}`;
-  globalStatus.innerHTML = `<span></span>${isConnected ? '치지직 연결됨' : '연결 안 됨'}`;
+  globalStatus.innerHTML = `<span></span>${isConnected ? '씨미 연결됨' : '연결 안 됨'}`;
 }
 
 function setPalworldStatus(status) {
@@ -54,11 +54,11 @@ async function loadConfig() {
 
 connectButton.addEventListener('click', async () => {
   if (isConnected) {
-    await api.disconnectChzzk();
+    await api.disconnectCime();
     return;
   }
-  const result = await api.connectChzzk();
-  if (!result.ok) addActivity('error', '치지직 연결 실패', result.message);
+  const result = await api.connectCime();
+  if (!result.ok) addActivity('error', '씨미 연결 실패', result.message);
 });
 
 document.querySelector('#palworld-test-button').addEventListener('click', async () => {
@@ -105,10 +105,9 @@ document.querySelector('#clear-log').addEventListener('click', () => {
 });
 
 api.onEvent((event) => {
-  if (event.type === 'status' && event.payload.chzzk) setChzzkStatus(event.payload.chzzk);
+  if (event.type === 'status' && event.payload.cime) setCimeStatus(event.payload.cime);
   if (event.type === 'status' && event.payload.palworld) setPalworldStatus(event.payload.palworld);
   if (event.type === 'log') addActivity(event.payload.level === 'error' ? 'error' : 'system', '시스템', event.payload.message);
-  if (event.type === 'chat') addActivity('chat', event.payload.profile?.nickname ?? '알 수 없음', event.payload.content ?? '-');
   if (event.type === 'donation') {
     addActivity('donation', `${event.payload.donatorNickname ?? '익명'} · ${event.payload.payAmount ?? 0}원`, event.payload.donationText ?? '-');
   }

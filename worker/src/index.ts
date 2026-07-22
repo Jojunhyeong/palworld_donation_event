@@ -1,7 +1,7 @@
 interface Env {
-  CHZZK_CLIENT_ID: string;
-  CHZZK_CLIENT_SECRET: string;
-  CHZZK_REDIRECT_URI: string;
+  CIME_CLIENT_ID: string;
+  CIME_CLIENT_SECRET: string;
+  CIME_REDIRECT_URI: string;
   OAUTH_SESSIONS: KVNamespace;
 }
 
@@ -15,7 +15,7 @@ interface TicketSession extends PendingSession {
   iv: string;
 }
 
-interface ChzzkTokenResponse {
+interface CimeTokenResponse {
   content?: {
     accessToken?: string;
     refreshToken?: string;
@@ -72,13 +72,13 @@ async function startAuthorization(request: Request, env: Env): Promise<Response>
   await env.OAUTH_SESSIONS.put(`pending:${state}`, JSON.stringify(pending), { expirationTtl: 300 });
 
   const params = new URLSearchParams({
-    clientId: env.CHZZK_CLIENT_ID,
-    redirectUri: env.CHZZK_REDIRECT_URI,
+    clientId: env.CIME_CLIENT_ID,
+    redirectUri: env.CIME_REDIRECT_URI,
     state,
   });
 
   return json({
-    authorizationUrl: `https://chzzk.naver.com/account-interlock?${params.toString()}`,
+    authorizationUrl: `https://ci.me/auth/openapi/account-interlock?${params.toString()}`,
   });
 }
 
@@ -91,20 +91,19 @@ async function finishAuthorization(url: URL, env: Env): Promise<Response> {
   const pending = await env.OAUTH_SESSIONS.get<PendingSession>(pendingKey, 'json');
   if (!pending) return text('인증 요청이 만료되었습니다. 앱에서 다시 시작해 주세요.', 400);
 
-  const tokenResponse = await fetch('https://openapi.chzzk.naver.com/auth/v1/token', {
+  const tokenResponse = await fetch('https://ci.me/api/openapi/auth/v1/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       grantType: 'authorization_code',
-      clientId: env.CHZZK_CLIENT_ID,
-      clientSecret: env.CHZZK_CLIENT_SECRET,
+      clientId: env.CIME_CLIENT_ID,
+      clientSecret: env.CIME_CLIENT_SECRET,
       code,
-      state,
     }),
   });
-  const tokenBody = await tokenResponse.json<ChzzkTokenResponse>();
+  const tokenBody = await tokenResponse.json<CimeTokenResponse>();
   if (!tokenResponse.ok || !tokenBody.content?.accessToken) {
-    return text(`치지직 토큰 발급에 실패했습니다. (${tokenResponse.status})`, 502);
+    return text(`씨미 토큰 발급에 실패했습니다. (${tokenResponse.status})`, 502);
   }
 
   const encrypted = await encryptTokens(tokenBody.content, pending.verifierHash);

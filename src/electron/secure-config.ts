@@ -1,7 +1,7 @@
 import { app, safeStorage } from 'electron';
 import { promises as fs } from 'fs';
 import path from 'path';
-import { ChzzkAuthTokens } from '../types';
+import { CimeAuthTokens } from '../types';
 
 interface StoredConfig {
   accessTokenEncrypted?: string;
@@ -42,7 +42,7 @@ export class SecureConfigStore {
     return { gameWin64Dir: stored.palworldGameWin64Dir ?? '' };
   }
 
-  async saveTokens(tokens: ChzzkAuthTokens): Promise<void> {
+  async saveTokens(tokens: CimeAuthTokens): Promise<void> {
     const current = await this.read();
     await this.write({
       ...current,

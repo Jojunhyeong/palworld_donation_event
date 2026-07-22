@@ -13,7 +13,7 @@ const PALWORLD_APP_ID = '1623730';
 const UE4SS_URL = 'https://github.com/Okaetsu/RE-UE4SS/releases/download/experimental-palworld/UE4SS-Palworld.zip';
 const UE4SS_SHA256 = '768a45718fbb9e429ac5cc3ce4a139a1b7b468bff31b4a136ae483d725aca1ca';
 const INSTALL_MARKER = '.pal-donation-ue4ss-version';
-const MOD_NAME = 'PalDonationBridge';
+const MOD_NAME = 'CimePalDonationBridge';
 
 type ProgressHandler = (message: string) => void;
 

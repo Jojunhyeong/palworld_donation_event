@@ -22,7 +22,7 @@ h2 { margin: 0; font-size: 19px; letter-spacing: -.02em; }
 .muted-card { opacity: .68; }
 .card-heading { display: flex; align-items: center; gap: 14px; }
 .icon { width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; font-weight: 900; }
-.icon.chzzk { color: #07130c; background: #00e676; }
+.icon.cime { color: #07130c; background: #00e676; }
 .icon.pal { color: #071117; background: #65d6ff; }
 .primary, .secondary { min-height: 42px; padding: 0 17px; border-radius: 11px; border: 0; font-weight: 800; }
 .primary { background: #00e676; color: #07130c; }

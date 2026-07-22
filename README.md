@@ -1,12 +1,12 @@
-# Pal Donation Bridge
+# 씨미 팰 후원 브리지
 
-치지직 채팅·후원 이벤트를 팰월드 일반 멀티플레이 초대방의 방장 캐릭터에게 연결하는 Windows 데스크톱 애플리케이션입니다.
+씨미 후원 이벤트를 팰월드 일반 멀티플레이 초대방의 방송인 캐릭터에게 연결하는 Windows 데스크톱 애플리케이션입니다. 기존 `v1.3.0`처럼 방송인마다 자기 PC에서 앱을 실행하는 개인 방식입니다.
 
 ## 현재 구현 범위
 
-- 치지직 OAuth 인증
-- Socket.IO v2 세션 연결
-- 일반 채팅과 후원 이벤트 수신
+- 씨미 OAuth 2.0 인증 (`READ:DONATION`)
+- 표준 WebSocket 세션 연결, PING 유지 및 자동 재연결
+- 채팅·영상·응원 후원 이벤트 수신
 - Electron 데스크톱 UI
 - 사용자에게 Client ID·Secret·리디렉션 URL을 요구하지 않는 간편 로그인
 - Cloudflare Worker Secret 저장소를 이용한 OAuth 토큰 교환
@@ -19,19 +19,13 @@
 - 1천·3천·5천·8천·1만·5만원 후원의 지급·회복·방해·사망 효과
 - GitHub Actions를 이용한 Windows `Setup.exe` 자동 빌드
 
-> 일반 초대방 모드는 Windows 실전 검증 단계입니다. 중요한 월드에서는 업데이트 후 각 테스트 버튼을 먼저 확인하세요.
+> 씨미 애플리케이션과 인증 Worker를 먼저 설정해야 로그인할 수 있습니다. 중요한 월드에서는 방송 전에 각 테스트 버튼을 확인하세요.
 
 ## 개발 실행
 
 ```bash
 npm install
 npm run desktop:dev
-```
-
-CLI 수신기는 다음으로 실행합니다.
-
-```bash
-npm run dev
 ```
 
 ## 빌드
@@ -45,7 +39,7 @@ Windows 설치 파일은 GitHub Actions의 `Build Windows installer` 워크플�
 
 ## 인증 서비스
 
-최종 사용자는 치지직 인증 정보를 입력하지 않습니다. `worker/`의 Cloudflare Worker가 Client Secret을 암호화된 Secret으로 보관하고 OAuth 토큰 교환을 대행합니다. 운영자의 최초 배포 절차는 [docs/OPERATOR_SETUP.md](docs/OPERATOR_SETUP.md)를 참고하세요.
+최종 사용자는 씨미 인증 정보를 입력하지 않습니다. `worker/`의 Cloudflare Worker가 Client Secret을 암호화된 Secret으로 보관하고 OAuth 토큰 교환을 대행합니다. 운영자의 최초 배포 절차는 [docs/OPERATOR_SETUP.md](docs/OPERATOR_SETUP.md)를 참고하세요.
 
 ## 보안
 

@@ -2,8 +2,8 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 contextBridge.exposeInMainWorld('desktopApi', {
   getConfig: () => ipcRenderer.invoke('config:get'),
-  connectChzzk: () => ipcRenderer.invoke('chzzk:connect'),
-  disconnectChzzk: () => ipcRenderer.invoke('chzzk:disconnect'),
+  connectCime: () => ipcRenderer.invoke('cime:connect'),
+  disconnectCime: () => ipcRenderer.invoke('cime:disconnect'),
   testPalworld: () => ipcRenderer.invoke('palworld:test'),
   preparePalworld: () => ipcRenderer.invoke('palworld:prepare'),
   testEffect: (amount: number) => ipcRenderer.invoke('effect:test', amount),

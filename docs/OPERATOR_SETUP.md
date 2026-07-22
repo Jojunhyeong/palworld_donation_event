@@ -10,18 +10,18 @@ npx wrangler login
 npx wrangler kv namespace create OAUTH_SESSIONS
 ```
 
-`wrangler.example.jsonc`를 `wrangler.jsonc`로 복사한 뒤 생성된 KV namespace ID, Worker 이름, 치지직 Client ID, Worker 콜백 URL을 입력합니다.
+`wrangler.example.jsonc`를 `wrangler.jsonc`로 복사한 뒤 생성된 KV namespace ID, Worker 이름, 씨미 Client ID, Worker 콜백 URL을 입력합니다.
 
 Client Secret은 파일에 쓰지 않고 다음 명령으로 암호화 저장소에 등록합니다.
 
 ```bash
-npx wrangler secret put CHZZK_CLIENT_SECRET
+npx wrangler secret put CIME_CLIENT_SECRET
 npx wrangler deploy
 ```
 
-## 2. 치지직 애플리케이션 리디렉션 URL 변경
+## 2. 씨미 애플리케이션 설정
 
-치지직 개발자 센터의 로그인 리디렉션 URL을 다음 형식으로 변경합니다.
+씨미 개발자 센터에서 애플리케이션에 `READ:DONATION` 권한을 부여하고 로그인 리디렉션 URL을 다음 형식으로 설정합니다.
 
 ```text
 https://<Worker 주소>/auth/callback

@@ -1,11 +1,11 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "pal-donation-auth",
+  "name": "cime-pal-donation-auth",
   "main": "src/index.ts",
   "compatibility_date": "2026-07-14",
   "vars": {
-    "CHZZK_CLIENT_ID": "YOUR_CLIENT_ID",
-    "CHZZK_REDIRECT_URI": "https://YOUR_WORKER.workers.dev/auth/callback"
+    "CIME_CLIENT_ID": "YOUR_CLIENT_ID",
+    "CIME_REDIRECT_URI": "https://YOUR_WORKER.workers.dev/auth/callback"
   },
   "kv_namespaces": [
     {
@@ -14,6 +14,6 @@
     }
   ],
   "secrets": {
-    "required": ["CHZZK_CLIENT_SECRET"]
+    "required": ["CIME_CLIENT_SECRET"]
   }
 }

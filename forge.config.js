@@ -1,8 +1,8 @@
 module.exports = {
   packagerConfig: {
     asar: true,
-    name: 'PalDonationBridge',
-    executableName: 'PalDonationBridge',
+    name: 'CimePalDonationBridge',
+    executableName: 'CimePalDonationBridge',
     ignore: [
       /^\/\.env(?:\..*)?$/,
       /^\/worker(?:\/|$)/,
@@ -14,9 +14,9 @@ module.exports = {
     {
       name: '@electron-forge/maker-squirrel',
       config: {
-        name: 'pal_donation_bridge',
-        authors: 'Pal Donation Bridge',
-        description: 'CHZZK donations to Palworld events bridge',
+        name: 'cime_pal_donation_bridge',
+        authors: 'Cime Pal Donation Bridge',
+        description: 'CIME donations to Palworld events bridge',
       },
     },
     { name: '@electron-forge/maker-zip', platforms: ['darwin'] },

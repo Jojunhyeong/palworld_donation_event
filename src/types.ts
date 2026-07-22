@@ -1,17 +1,17 @@
-export interface ChzzkAuthTokens {
+export interface CimeAuthTokens {
   accessToken: string;
   refreshToken?: string;
 }
 
-export interface ChzzkTokenResponse {
-  content?: ChzzkAuthTokens & {
+export interface CimeTokenResponse {
+  content?: CimeAuthTokens & {
     tokenType?: string;
     expiresIn?: string | number;
     scope?: string;
   };
 }
 
-export interface ChzzkSessionResponse {
+export interface CimeSessionResponse {
   content?: {
     url?: string;
   };
@@ -24,14 +24,6 @@ export interface DonationEvent {
   donatorNickname?: string;
   payAmount?: string | number;
   donationText?: string;
-}
-
-export interface ChatEvent {
-  channelId?: string;
-  senderChannelId?: string;
-  profile?: {
-    nickname?: string;
-  };
-  content?: string;
-  messageTime?: number;
+  emojis?: Record<string, string>;
+  cheeringItems?: unknown[];
 }

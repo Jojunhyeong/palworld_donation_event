@@ -1,13 +1,13 @@
 import crypto from 'crypto';
 import http from 'http';
 import axios from 'axios';
-import { ChzzkAuthTokens } from '../types';
+import { CimeAuthTokens } from '../types';
 
 interface StartResponse {
   authorizationUrl?: string;
 }
 
-interface ClaimResponse extends ChzzkAuthTokens {
+interface ClaimResponse extends CimeAuthTokens {
   tokenType?: string;
   expiresIn?: string | number;
   scope?: string;
@@ -20,19 +20,19 @@ const LOCAL_CALLBACK = new URL('http://localhost:3000/auth/callback');
 export async function authorizeWithRemoteService(
   authServiceUrl: string,
   onAuthorizationUrl: AuthorizationUrlHandler,
-): Promise<ChzzkAuthTokens> {
+): Promise<CimeAuthTokens> {
   const serviceUrl = authServiceUrl.replace(/\/$/, '');
   if (!serviceUrl.startsWith('https://') || serviceUrl.includes('YOUR_SUBDOMAIN')) {
-    throw new Error('치지직 인증 서비스가 아직 설정되지 않았습니다.');
+    throw new Error('씨미 인증 서비스가 아직 설정되지 않았습니다.');
   }
 
   const localState = crypto.randomUUID();
   const verifier = crypto.randomBytes(32).toString('base64url');
   const verifierHash = crypto.createHash('sha256').update(verifier).digest('base64url');
 
-  return new Promise<ChzzkAuthTokens>((resolve, reject) => {
+  return new Promise<CimeAuthTokens>((resolve, reject) => {
     let settled = false;
-    const finish = (error?: unknown, tokens?: ChzzkAuthTokens) => {
+    const finish = (error?: unknown, tokens?: CimeAuthTokens) => {
       if (settled) return;
       settled = true;
       clearTimeout(timeout);
@@ -63,10 +63,10 @@ export async function authorizeWithRemoteService(
           { ticket, verifier },
           { timeout: 10_000, headers: { 'Content-Type': 'application/json' } },
         );
-        if (!claim.data?.accessToken) throw new Error('치지직 인증 토큰을 받지 못했습니다.');
+        if (!claim.data?.accessToken) throw new Error('씨미 인증 토큰을 받지 못했습니다.');
 
         response.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
-        response.end('치지직 연결이 완료되었습니다. 이 창을 닫아도 됩니다.');
+        response.end('씨미 연결이 완료되었습니다. 이 창을 닫아도 됩니다.');
         finish(undefined, { accessToken: claim.data.accessToken, refreshToken: claim.data.refreshToken });
       } catch (error) {
         response.writeHead(502, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
@@ -75,7 +75,7 @@ export async function authorizeWithRemoteService(
       }
     });
 
-    const timeout = setTimeout(() => finish(new Error('치지직 인증 시간이 초과되었습니다.')), 5 * 60 * 1000);
+    const timeout = setTimeout(() => finish(new Error('씨미 인증 시간이 초과되었습니다.')), 5 * 60 * 1000);
     server.once('error', (error) => finish(error));
     server.listen(Number(LOCAL_CALLBACK.port), LOCAL_CALLBACK.hostname, async () => {
       try {
@@ -84,7 +84,7 @@ export async function authorizeWithRemoteService(
           { localState, verifierHash },
           { timeout: 10_000, headers: { 'Content-Type': 'application/json' } },
         );
-        if (!start.data?.authorizationUrl) throw new Error('치지직 인증 URL을 받지 못했습니다.');
+        if (!start.data?.authorizationUrl) throw new Error('씨미 인증 URL을 받지 못했습니다.');
         await onAuthorizationUrl(start.data.authorizationUrl);
       } catch (error) {
         finish(error);
