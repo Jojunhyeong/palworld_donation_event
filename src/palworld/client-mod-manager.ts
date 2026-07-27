@@ -14,7 +14,7 @@ const UE4SS_URL = 'https://github.com/Okaetsu/RE-UE4SS/releases/download/experim
 const UE4SS_SHA256 = '768a45718fbb9e429ac5cc3ce4a139a1b7b468bff31b4a136ae483d725aca1ca';
 const INSTALL_MARKER = '.pal-donation-ue4ss-version';
 const MOD_NAME = 'CimePalDonationBridge';
-const MOD_PROTOCOL_VERSION = 'cime-vector-table-v4';
+const MOD_PROTOCOL_VERSION = 'cime-safe-obstruction-v5';
 
 type ProgressHandler = (message: string) => void;
 
@@ -95,18 +95,6 @@ export class PalworldClientModManager {
 
   async fullHeal(config: ClientModConfig): Promise<void> {
     await this.sendCommand(config, 'full_heal');
-  }
-
-  async superJump(config: ClientModConfig): Promise<void> {
-    await this.sendCommand(config, 'super_jump');
-  }
-
-  async randomMove(config: ClientModConfig): Promise<void> {
-    await this.sendCommand(config, 'random_move');
-  }
-
-  async deleteRandomItem(config: ClientModConfig): Promise<void> {
-    await this.sendCommand(config, 'delete_random_item');
   }
 
   async killPlayer(config: ClientModConfig): Promise<void> {
@@ -256,41 +244,6 @@ local function execute_command(fields)
                 local parameter = player:GetCharacterParameterComponent()
                 if parameter == nil or not parameter:IsValid() then error("parameter_not_found") end
                 parameter:AddHPByRate_ToServer(1.0)
-            elseif command == "super_jump" then
-                player:LaunchCharacter({ X = 0, Y = 0, Z = 1500 }, false, false)
-            elseif command == "random_move" then
-                local controller = player:GetPalPlayerController()
-                if controller == nil or not controller:IsValid() then error("controller_not_found") end
-                local location = player:K2_GetActorLocation()
-                controller:Debug_Teleport2D({
-                    X = location.X + math.random(-5000, 5000),
-                    Y = location.Y + math.random(-5000, 5000),
-                    Z = location.Z
-                })
-            elseif command == "delete_random_item" then
-                local utility = StaticFindObject("/Script/Pal.Default__PalUtility")
-                if utility == nil or not utility:IsValid() then error("utility_not_found") end
-                local inventory = utility:GetLocalInventoryData(player)
-                if inventory == nil or not inventory:IsValid() then error("inventory_not_found") end
-                local container_manager = utility:GetItemContainerManager(player)
-                if container_manager == nil or not container_manager:IsValid() then error("container_manager_not_found") end
-                local container = container_manager:GetContainer(inventory.inventoryInfo.CommonContainerId)
-                if container == nil or not container:IsValid() then error("common_container_not_found") end
-                local candidates = {}
-                for index = 0, container:Num() - 1 do
-                    local slot = container:Get(index)
-                    if slot ~= nil and slot:IsValid() and not slot:IsEmpty() then
-                        local item_id = slot:GetItemId()
-                        local count = slot:GetStackCount()
-                        if count > 0 then table.insert(candidates, { id = item_id.StaticId, count = count }) end
-                    end
-                end
-                if #candidates == 0 then error("inventory_empty") end
-                local selected = candidates[math.random(#candidates)]
-                local incident = StaticFindObject("/Script/Pal.Default__PalIncidentBase")
-                if incident == nil or not incident:IsValid() then error("incident_utility_not_found") end
-                local removed = incident:RequestConsumeInventoryItem(inventory, selected.id, selected.count)
-                if removed == nil or removed < 1 then error("item_delete_failed") end
             elseif command == "kill_player" then
                 local controller = player:GetPalPlayerController()
                 if controller == nil or not controller:IsValid() then error("controller_not_found") end
