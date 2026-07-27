@@ -14,7 +14,7 @@ const UE4SS_URL = 'https://github.com/Okaetsu/RE-UE4SS/releases/download/experim
 const UE4SS_SHA256 = '768a45718fbb9e429ac5cc3ce4a139a1b7b468bff31b4a136ae483d725aca1ca';
 const INSTALL_MARKER = '.pal-donation-ue4ss-version';
 const MOD_NAME = 'CimePalDonationBridge';
-const MOD_PROTOCOL_VERSION = 'cime-experimental-movement-v6';
+const MOD_PROTOCOL_VERSION = 'cime-experimental-movement-v7';
 
 type ProgressHandler = (message: string) => void;
 
@@ -253,7 +253,8 @@ local function execute_command(fields)
                 if parameter == nil or not parameter:IsValid() then error("parameter_not_found") end
                 parameter:AddHPByRate_ToServer(1.0)
             elseif command == "experimental_super_jump" then
-                local movement = player:GetCharacterMovement()
+                local movement = player.GetCharacterMovement
+                if movement == nil then movement = player.CharacterMovement end
                 if movement == nil or not movement:IsValid() then error("movement_not_found") end
                 local original_jump_velocity = movement.JumpZVelocity
                 movement.JumpZVelocity = 2000
@@ -263,7 +264,7 @@ local function execute_command(fields)
                 local controller = player:GetPalPlayerController()
                 if controller == nil or not controller:IsValid() then error("controller_not_found") end
                 local location = player:K2_GetActorLocation()
-                if location == nil or not location:IsValid() then error("location_not_found") end
+                if location == nil then error("location_not_found") end
                 location.X = location.X + math.random(-5000, 5000)
                 location.Y = location.Y + math.random(-5000, 5000)
                 controller:Debug_Teleport2D(location)
