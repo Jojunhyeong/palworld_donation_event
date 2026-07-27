@@ -14,7 +14,7 @@ const UE4SS_URL = 'https://github.com/Okaetsu/RE-UE4SS/releases/download/experim
 const UE4SS_SHA256 = '768a45718fbb9e429ac5cc3ce4a139a1b7b468bff31b4a136ae483d725aca1ca';
 const INSTALL_MARKER = '.pal-donation-ue4ss-version';
 const MOD_NAME = 'CimePalDonationBridge';
-const MOD_PROTOCOL_VERSION = 'cime-local-player-v2';
+const MOD_PROTOCOL_VERSION = 'cime-host-player-v3';
 
 type ProgressHandler = (message: string) => void;
 
@@ -235,43 +235,22 @@ local function split(value)
     return fields
 end
 
-local function get_utility()
-    local utility = StaticFindObject("/Script/Pal.Default__PalUtility")
-    if utility == nil or not utility:IsValid() then error("utility_not_found") end
-    return utility
-end
-
-local function find_local_player()
-    local utility = get_utility()
-    local context = FindFirstOf("PalPlayerCharacter")
-    if context == nil or not context:IsValid() then error("player_not_found") end
-    local controller = utility:GetLocalPlayerController(context)
-    if controller == nil or not controller:IsValid() then error("local_controller_not_found") end
-    local player = controller:K2_GetPawn()
-    if player == nil or not player:IsValid() then error("local_player_not_found") end
-    return player
-end
-
-local function get_player_inventory(player)
-    local state = player:GetPalPlayerState()
-    if state == nil or not state:IsValid() then error("player_state_not_found") end
-    local inventory = state:GetInventoryData()
-    if inventory == nil or not inventory:IsValid() then error("inventory_not_found") end
-    return inventory
-end
-
 local function execute_command(fields)
     local id = fields[1] or "unknown"
     local command = fields[2]
 
     ExecuteInGameThread(function()
         local ok, err = pcall(function()
-            local player = find_local_player()
+            local player = FindFirstOf("PalPlayerCharacter")
+            if player == nil or not player:IsValid() then error("player_not_found") end
             if command == "give_item" then
                 local item_id = fields[3]
                 local count = tonumber(fields[4])
                 if item_id == nil or count == nil or count < 1 or count > 9999 then error("invalid_item") end
-                local inventory = get_player_inventory(player)
+                local utility = StaticFindObject("/Script/Pal.Default__PalUtility")
+                if utility == nil or not utility:IsValid() then error("utility_not_found") end
+                local inventory = utility:GetLocalInventoryData(player)
+                if inventory == nil or not inventory:IsValid() then error("inventory_not_found") end
                 inventory:AddItem_ServerInternal(FName(item_id), count, false, 0, true)
             elseif command == "full_heal" then
                 local parameter = player:GetCharacterParameterComponent()
@@ -285,8 +264,10 @@ local function execute_command(fields)
                 local location = player:K2_GetActorLocation()
                 controller:Debug_Teleport2D(FVector(location.X + math.random(-5000, 5000), location.Y + math.random(-5000, 5000), location.Z))
             elseif command == "delete_random_item" then
-                local utility = get_utility()
-                local inventory = get_player_inventory(player)
+                local utility = StaticFindObject("/Script/Pal.Default__PalUtility")
+                if utility == nil or not utility:IsValid() then error("utility_not_found") end
+                local inventory = utility:GetLocalInventoryData(player)
+                if inventory == nil or not inventory:IsValid() then error("inventory_not_found") end
                 local container_manager = utility:GetItemContainerManager(player)
                 if container_manager == nil or not container_manager:IsValid() then error("container_manager_not_found") end
                 local container = container_manager:GetContainer(inventory.inventoryInfo.CommonContainerId)
