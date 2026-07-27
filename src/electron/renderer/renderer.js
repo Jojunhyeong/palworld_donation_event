@@ -96,6 +96,20 @@ document.querySelectorAll('[data-test-amount]').forEach((button) => {
   });
 });
 
+document.querySelectorAll('[data-experimental-effect]').forEach((button) => {
+  button.addEventListener('click', async () => {
+    const effect = button.dataset.experimentalEffect;
+    button.disabled = true;
+    try {
+      const result = await api.testExperimentalEffect(effect);
+      if (!result.ok) addActivity('error', '실험 효과 실패', result.message);
+      else addActivity('success', '실험 효과 성공', effect === 'super_jump' ? '슈퍼 점프 명령을 실행했습니다.' : '랜덤 이동 명령을 실행했습니다.');
+    } finally {
+      button.disabled = false;
+    }
+  });
+});
+
 document.querySelector('#clear-log').addEventListener('click', () => {
   activityList.replaceChildren();
   const empty = document.createElement('div');

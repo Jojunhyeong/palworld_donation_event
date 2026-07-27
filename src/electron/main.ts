@@ -95,6 +95,29 @@ function registerIpc(): void {
     return emitEffect(amount, '테스트');
   });
 
+  ipcMain.handle('effect:experimental', async (event, effect: unknown) => {
+    assertTrustedSender(event.senderFrame?.url ?? '');
+    if (effect !== 'super_jump' && effect !== 'random_move') {
+      return { ok: false, message: '지원하지 않는 실험 효과입니다.' };
+    }
+    try {
+      if (!palworldManager) throw new Error('팰월드 모드 관리자를 시작하지 못했습니다.');
+      const config = await configStore.getClientModConfig();
+      if (effect === 'super_jump') {
+        await palworldManager.experimentalSuperJump(config);
+        sendEvent('log', { level: 'info', message: '실험 효과: 슈퍼 점프를 실행했습니다.' });
+      } else {
+        await palworldManager.experimentalRandomMove(config);
+        sendEvent('log', { level: 'info', message: '실험 효과: 랜덤 이동을 실행했습니다.' });
+      }
+      return { ok: true };
+    } catch (error) {
+      const message = getSafeErrorMessage(error, '실험 효과 실행에 실패했습니다.');
+      sendEvent('log', { level: 'error', message });
+      return { ok: false, message };
+    }
+  });
+
   ipcMain.handle('palworld:prepare', async (event) => {
     assertTrustedSender(event.senderFrame?.url ?? '');
     try {

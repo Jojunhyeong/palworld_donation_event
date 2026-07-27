@@ -1,6 +1,6 @@
 {
   "name": "cime-palworld-donation",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "type": "commonjs",
   "main": "dist/electron/main.js",
