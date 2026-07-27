@@ -14,7 +14,7 @@ const UE4SS_URL = 'https://github.com/Okaetsu/RE-UE4SS/releases/download/experim
 const UE4SS_SHA256 = '768a45718fbb9e429ac5cc3ce4a139a1b7b468bff31b4a136ae483d725aca1ca';
 const INSTALL_MARKER = '.pal-donation-ue4ss-version';
 const MOD_NAME = 'CimePalDonationBridge';
-const MOD_PROTOCOL_VERSION = 'cime-experimental-movement-v9';
+const MOD_PROTOCOL_VERSION = 'cime-experimental-movement-v10';
 
 type ProgressHandler = (message: string) => void;
 
@@ -279,8 +279,10 @@ local function execute_command(fields)
             elseif command == "experimental_random_move" then
                 local location = player:K2_GetActorLocation()
                 if location == nil then error("location_not_found") end
-                location.X = location.X + math.random(-5000, 5000)
-                location.Y = location.Y + math.random(-5000, 5000)
+                local angle = math.random() * math.pi * 2
+                local distance = math.random(150, 300)
+                location.X = location.X + math.cos(angle) * distance
+                location.Y = location.Y + math.sin(angle) * distance
                 local rotation = player:K2_GetActorRotation()
                 if rotation == nil then error("rotation_not_found") end
                 local moved = player:K2_TeleportTo(location, rotation)
