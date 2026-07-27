@@ -71,16 +71,21 @@ async function executeObstruction(
   manager: PalworldClientModManager,
   config: ClientModConfig,
 ): Promise<string> {
-  if (effect.label === '슈퍼 점프') {
-    await manager.superJump(config);
-    return '방장 캐릭터를 슈퍼점프시켰습니다.';
+  try {
+    if (effect.label === '슈퍼 점프') {
+      await manager.superJump(config);
+      return '방장 캐릭터를 슈퍼점프시켰습니다.';
+    }
+    if (effect.label === '랜덤 이동') {
+      await manager.randomMove(config);
+      return '방장 캐릭터를 주변의 무작위 위치로 이동했습니다.';
+    }
+    await manager.deleteRandomItem(config);
+    return '일반 가방에서 아이템 한 묶음을 무작위로 삭제했습니다.';
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(`8,000원 방해 효과(${effect.label}) 실행 실패: ${detail}`);
   }
-  if (effect.label === '랜덤 이동') {
-    await manager.randomMove(config);
-    return '방장 캐릭터를 주변의 무작위 위치로 이동했습니다.';
-  }
-  await manager.deleteRandomItem(config);
-  return '일반 가방에서 아이템 한 묶음을 무작위로 삭제했습니다.';
 }
 
 async function executeHelp(manager: PalworldClientModManager, config: ClientModConfig): Promise<string> {

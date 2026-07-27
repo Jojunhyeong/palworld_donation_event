@@ -14,6 +14,7 @@ const UE4SS_URL = 'https://github.com/Okaetsu/RE-UE4SS/releases/download/experim
 const UE4SS_SHA256 = '768a45718fbb9e429ac5cc3ce4a139a1b7b468bff31b4a136ae483d725aca1ca';
 const INSTALL_MARKER = '.pal-donation-ue4ss-version';
 const MOD_NAME = 'CimePalDonationBridge';
+const MOD_PROTOCOL_VERSION = 'cime-local-player-v2';
 
 type ProgressHandler = (message: string) => void;
 
@@ -24,6 +25,7 @@ export interface ClientModConfig {
 export interface ClientModStatus {
   installed: boolean;
   gameRunning: boolean;
+  compatible: boolean;
   gameWin64Dir: string;
 }
 
@@ -74,13 +76,15 @@ export class PalworldClientModManager {
 
   async status(config: ClientModConfig): Promise<ClientModStatus> {
     const gameWin64Dir = config.gameWin64Dir || (this.supported ? await findPalworldWin64Dir() : '');
-    if (!gameWin64Dir) return { installed: false, gameRunning: false, gameWin64Dir: '' };
+    if (!gameWin64Dir) return { installed: false, gameRunning: false, compatible: false, gameWin64Dir: '' };
     const modRoot = this.getModRoot(gameWin64Dir);
     const installed = await fileExists(path.join(modRoot, 'Scripts', 'main.lua'));
     const heartbeat = await modifiedAt(path.join(modRoot, 'heartbeat.txt'));
+    const runtimeVersion = await readText(path.join(modRoot, 'runtime-version.txt'));
     return {
       installed,
       gameRunning: installed && Date.now() - heartbeat < 5_000,
+      compatible: runtimeVersion.trim() === MOD_PROTOCOL_VERSION,
       gameWin64Dir,
     };
   }
@@ -114,6 +118,9 @@ export class PalworldClientModManager {
       const status = await this.status(config);
       if (!status.installed) throw new Error('일반 초대방 모드를 먼저 설치해 주세요.');
       if (!status.gameRunning) throw new Error('팰월드를 실행하고 멀티플레이 월드에 들어가 주세요.');
+      if (!status.compatible) {
+        throw new Error('설치된 방장 모드가 구버전입니다. 팰월드를 종료하고 방장 모드를 다시 설치한 뒤 재실행해 주세요.');
+      }
 
       const modRoot = this.getModRoot(status.gameWin64Dir);
       const commandPath = path.join(modRoot, 'command.txt');
@@ -194,15 +201,21 @@ async function enableMod(gameWin64Dir: string): Promise<void> {
 }
 
 async function clearBridgeFiles(modRoot: string): Promise<void> {
-  await Promise.all(['command.txt', 'command.tmp', 'result.txt', 'heartbeat.txt'].map((name) => fs.rm(path.join(modRoot, name), { force: true })));
+  await Promise.all(
+    ['command.txt', 'command.tmp', 'result.txt', 'heartbeat.txt', 'runtime-version.txt'].map((name) =>
+      fs.rm(path.join(modRoot, name), { force: true }),
+    ),
+  );
 }
 
 function createLuaMod(modRoot: string): string {
   const root = modRoot.replace(/\\/g, '/');
   return `local ROOT = [[${root}]]
+local PROTOCOL_VERSION = [[${MOD_PROTOCOL_VERSION}]]
 local COMMAND_PATH = ROOT .. "/command.txt"
 local RESULT_PATH = ROOT .. "/result.txt"
 local HEARTBEAT_PATH = ROOT .. "/heartbeat.txt"
+local VERSION_PATH = ROOT .. "/runtime-version.txt"
 
 local function write_file(file_path, contents)
     local file = io.open(file_path, "w")
@@ -212,6 +225,8 @@ local function write_file(file_path, contents)
     return true
 end
 
+write_file(VERSION_PATH, PROTOCOL_VERSION)
+
 local function split(value)
     local fields = {}
     for field in string.gmatch(value, "([^|]+)") do
@@ -220,22 +235,43 @@ local function split(value)
     return fields
 end
 
+local function get_utility()
+    local utility = StaticFindObject("/Script/Pal.Default__PalUtility")
+    if utility == nil or not utility:IsValid() then error("utility_not_found") end
+    return utility
+end
+
+local function find_local_player()
+    local utility = get_utility()
+    local context = FindFirstOf("PalPlayerCharacter")
+    if context == nil or not context:IsValid() then error("player_not_found") end
+    local controller = utility:GetLocalPlayerController(context)
+    if controller == nil or not controller:IsValid() then error("local_controller_not_found") end
+    local player = controller:K2_GetPawn()
+    if player == nil or not player:IsValid() then error("local_player_not_found") end
+    return player
+end
+
+local function get_player_inventory(player)
+    local state = player:GetPalPlayerState()
+    if state == nil or not state:IsValid() then error("player_state_not_found") end
+    local inventory = state:GetInventoryData()
+    if inventory == nil or not inventory:IsValid() then error("inventory_not_found") end
+    return inventory
+end
+
 local function execute_command(fields)
     local id = fields[1] or "unknown"
     local command = fields[2]
 
     ExecuteInGameThread(function()
         local ok, err = pcall(function()
-            local player = FindFirstOf("PalPlayerCharacter")
-            if player == nil or not player:IsValid() then error("player_not_found") end
+            local player = find_local_player()
             if command == "give_item" then
                 local item_id = fields[3]
                 local count = tonumber(fields[4])
                 if item_id == nil or count == nil or count < 1 or count > 9999 then error("invalid_item") end
-                local utility = StaticFindObject("/Script/Pal.Default__PalUtility")
-                if utility == nil or not utility:IsValid() then error("utility_not_found") end
-                local inventory = utility:GetLocalInventoryData(player)
-                if inventory == nil or not inventory:IsValid() then error("inventory_not_found") end
+                local inventory = get_player_inventory(player)
                 inventory:AddItem_ServerInternal(FName(item_id), count, false, 0, true)
             elseif command == "full_heal" then
                 local parameter = player:GetCharacterParameterComponent()
@@ -249,10 +285,8 @@ local function execute_command(fields)
                 local location = player:K2_GetActorLocation()
                 controller:Debug_Teleport2D(FVector(location.X + math.random(-5000, 5000), location.Y + math.random(-5000, 5000), location.Z))
             elseif command == "delete_random_item" then
-                local utility = StaticFindObject("/Script/Pal.Default__PalUtility")
-                if utility == nil or not utility:IsValid() then error("utility_not_found") end
-                local inventory = utility:GetLocalInventoryData(player)
-                if inventory == nil or not inventory:IsValid() then error("inventory_not_found") end
+                local utility = get_utility()
+                local inventory = get_player_inventory(player)
                 local container_manager = utility:GetItemContainerManager(player)
                 if container_manager == nil or not container_manager:IsValid() then error("container_manager_not_found") end
                 local container = container_manager:GetContainer(inventory.inventoryInfo.CommonContainerId)
