@@ -14,7 +14,7 @@ const UE4SS_URL = 'https://github.com/Okaetsu/RE-UE4SS/releases/download/experim
 const UE4SS_SHA256 = '768a45718fbb9e429ac5cc3ce4a139a1b7b468bff31b4a136ae483d725aca1ca';
 const INSTALL_MARKER = '.pal-donation-ue4ss-version';
 const MOD_NAME = 'CimePalDonationBridge';
-const MOD_PROTOCOL_VERSION = 'cime-host-player-v3';
+const MOD_PROTOCOL_VERSION = 'cime-vector-table-v4';
 
 type ProgressHandler = (message: string) => void;
 
@@ -257,12 +257,16 @@ local function execute_command(fields)
                 if parameter == nil or not parameter:IsValid() then error("parameter_not_found") end
                 parameter:AddHPByRate_ToServer(1.0)
             elseif command == "super_jump" then
-                player:LaunchCharacter(FVector(0, 0, 1500), false, false)
+                player:LaunchCharacter({ X = 0, Y = 0, Z = 1500 }, false, false)
             elseif command == "random_move" then
                 local controller = player:GetPalPlayerController()
                 if controller == nil or not controller:IsValid() then error("controller_not_found") end
                 local location = player:K2_GetActorLocation()
-                controller:Debug_Teleport2D(FVector(location.X + math.random(-5000, 5000), location.Y + math.random(-5000, 5000), location.Z))
+                controller:Debug_Teleport2D({
+                    X = location.X + math.random(-5000, 5000),
+                    Y = location.Y + math.random(-5000, 5000),
+                    Z = location.Z
+                })
             elseif command == "delete_random_item" then
                 local utility = StaticFindObject("/Script/Pal.Default__PalUtility")
                 if utility == nil or not utility:IsValid() then error("utility_not_found") end
