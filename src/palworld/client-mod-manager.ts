@@ -14,7 +14,7 @@ const UE4SS_URL = 'https://github.com/Okaetsu/RE-UE4SS/releases/download/experim
 const UE4SS_SHA256 = '768a45718fbb9e429ac5cc3ce4a139a1b7b468bff31b4a136ae483d725aca1ca';
 const INSTALL_MARKER = '.pal-donation-ue4ss-version';
 const MOD_NAME = 'CimePalDonationBridge';
-const MOD_PROTOCOL_VERSION = 'cime-experimental-movement-v10';
+const MOD_PROTOCOL_VERSION = 'cime-experimental-navmesh-v11';
 
 type ProgressHandler = (message: string) => void;
 
@@ -277,15 +277,27 @@ local function execute_command(fields)
                     end)
                 end)
             elseif command == "experimental_random_move" then
-                local location = player:K2_GetActorLocation()
-                if location == nil then error("location_not_found") end
-                local angle = math.random() * math.pi * 2
-                local distance = math.random(150, 300)
-                location.X = location.X + math.cos(angle) * distance
-                location.Y = location.Y + math.sin(angle) * distance
+                local origin = player:K2_GetActorLocation()
+                if origin == nil then error("location_not_found") end
+                local destination = player:K2_GetActorLocation()
+                if destination == nil then error("destination_not_found") end
+                local navigation = StaticFindObject("/Script/NavigationSystem.Default__NavigationSystemV1")
+                if navigation == nil or not navigation:IsValid() then error("navigation_system_not_found") end
+                local query_ok, reachable = pcall(function()
+                    return navigation:K2_GetRandomReachablePointInRadius(
+                        player,
+                        origin,
+                        destination,
+                        300,
+                        nil,
+                        nil
+                    )
+                end)
+                if not query_ok then error("navigation_query_failed:" .. tostring(reachable)) end
+                if reachable == false then error("no_reachable_destination") end
                 local rotation = player:K2_GetActorRotation()
                 if rotation == nil then error("rotation_not_found") end
-                local moved = player:K2_TeleportTo(location, rotation)
+                local moved = player:K2_TeleportTo(destination, rotation)
                 if moved == false then error("teleport_rejected") end
             elseif command == "kill_player" then
                 local controller = player:GetPalPlayerController()
